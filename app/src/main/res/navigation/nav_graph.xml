@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.shoaib.demodatadog.presentation.home.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_homeFragment_to_articleDetailActivity"
+            app:destination="@id/articleDetailActivity" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/categoryFragment"
+        android:name="com.shoaib.demodatadog.presentation.category.CategoryFragment"
+        android:label="Categories"
+        tools:layout="@layout/fragment_categories">
+        <action
+            android:id="@+id/action_categoryFragment_to_articleDetailActivity"
+            app:destination="@id/articleDetailActivity" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/searchFragment"
+        android:name="com.shoaib.demodatadog.presentation.search.SearchFragment"
+        android:label="Search"
+        tools:layout="@layout/fragment_search">
+        <action
+            android:id="@+id/action_searchFragment_to_articleDetailActivity"
+            app:destination="@id/articleDetailActivity" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/favoritesFragment"
+        android:name="com.shoaib.demodatadog.presentation.favorites.FavoritesFragment"
+        android:label="Favorites"
+        tools:layout="@layout/fragment_favorites">
+        <action
+            android:id="@+id/action_favoritesFragment_to_articleDetailActivity"
+            app:destination="@id/articleDetailActivity" />
+    </fragment>
+
+    <activity
+        android:id="@+id/articleDetailActivity"
+        android:name="com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity"
+        android:label="Article Detail" />
+</navigation>
+
