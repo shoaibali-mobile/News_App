@@ -443,7 +443,12 @@ Traffic
 
 <img width="1440" height="900" alt="P Traffic" src="https://github.com/user-attachments/assets/5577fbd2-b6f0-44b6-ad39-ac97ff7370f2" />
 
-   
+Application Management 
+
+<img width="1434" height="791" alt="Screenshot 2025-12-11 at 4 00 04 PM" src="https://github.com/user-attachments/assets/2098fa49-1cdd-40d0-b1bc-7571d54ed08c" />
+
+
+
 
 ## 📚 Additional Resources
 
