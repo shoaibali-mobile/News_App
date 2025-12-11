@@ -15,45 +15,45 @@ Real User Monitoring (RUM) tracks real users using your app in real-time. It pro
 3. **Analytics/Usage**: Understand who uses your app (country, device, OS), track user journeys
 4. **Support/Troubleshooting**: Complete session recordings, see everything user did before error
 
-## ✅ Automatic Instrumentation Features
+## Automatic Instrumentation Features
 
 ### What's Automatically Tracked
 
 #### 1. User Interactions
-- ✅ All taps on buttons, cards, navigation items
-- ✅ Swipes on RecyclerViews
-- ✅ Screen navigation (Activities, Fragments)
-- ✅ Floating action button clicks
-- ✅ Bottom navigation clicks
+- All taps on buttons, cards, navigation items
+- Swipes on RecyclerViews
+- Screen navigation (Activities, Fragments)
+- Floating action button clicks
+- Bottom navigation clicks
 
 #### 2. Network Requests
-- ✅ All API calls to `newsapi.org`
-- ✅ Request URL and method (GET, POST, etc.)
-- ✅ Response status codes (200, 404, 500, etc.)
-- ✅ Request/response times
-- ✅ Network errors
-- ✅ Request/response sizes
+- All API calls to `newsapi.org`
+- Request URL and method (GET, POST, etc.)
+- Response status codes (200, 404, 500, etc.)
+- Request/response times
+- Network errors
+- Request/response sizes
 - ⚠️ **Note**: Request/response bodies are **NOT** tracked by default (for security)
 
 #### 3. Errors & Crashes
-- ✅ Unhandled exceptions
-- ✅ Application crashes
-- ✅ Network errors
-- ✅ Stack traces with source mapping
-- ✅ Error grouping and tracking over time
+- Unhandled exceptions
+- Application crashes
+- Network errors
+- Stack traces with source mapping
+- Error grouping and tracking over time
 
 #### 4. Performance Metrics
-- ✅ Screen load times
-- ✅ Time-to-Network-Settled (TNS) - default 100ms threshold
-- ✅ Interaction-to-Next-View (INV) - default 3 seconds threshold
-- ✅ Network request durations
-- ✅ View rendering times
+- Screen load times
+- Time-to-Network-Settled (TNS) - default 100ms threshold
+- Interaction-to-Next-View (INV) - default 3 seconds threshold
+- Network request durations
+- View rendering times
 
 #### 5. Session Replay
-- ✅ Complete user session recordings
-- ✅ Visual replay of user interactions
-- ✅ Privacy masking enabled (text shown as "XXXXX" by default)
-- ✅ 100% sample rate (all sessions recorded)
+- Complete user session recordings
+- Visual replay of user interactions
+- Privacy masking enabled (text shown as "XXXXX" by default)
+- 100% sample rate (all sessions recorded)
 
 ## 🔧 Configuration
 
@@ -148,10 +148,10 @@ User Action → Retrofit → OkHttpClient
 
 ### Default Behavior
 
-- ✅ Request/response bodies are **NOT** tracked by Datadog
-- ✅ Only metadata is collected (URL, method, status, timing)
-- ✅ Session Replay masks text by default ("XXXXX")
-- ✅ User data is protected
+- Request/response bodies are **NOT** tracked by Datadog
+- Only metadata is collected (URL, method, status, timing)
+- Session Replay masks text by default ("XXXXX")
+- User data is protected
 
 ### Important Note
 
@@ -297,10 +297,10 @@ This creates `@view.custom_timings.hero_image` in Datadog.
 
 ### Automatic Error Tracking
 
-- ✅ All unhandled exceptions
-- ✅ Application crashes
-- ✅ Network errors
-- ✅ Stack traces with source mapping
+- All unhandled exceptions
+- Application crashes
+- Network errors
+- Stack traces with source mapping
 
 ### Error Grouping
 
