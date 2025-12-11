@@ -205,12 +205,8 @@ User Action → Retrofit → OkHttpClient
 - Status Code: `200`
 - Duration: `245ms`
 - Size: `15.2 KB`
-- Error (if any): Error message
 
-**NOT Sent:**
-- Request body content
-- Response body content
-- Headers (except tracing headers)
+
 
 ## 🔒 Security & Privacy
 
