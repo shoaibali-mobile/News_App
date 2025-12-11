@@ -133,7 +133,6 @@ Main application class where Datadog SDK is initialized.
 
 **Key Components:**
 - Datadog SDK initialization with Configuration
-- First-party hosts configuration (`newsapi.org`, `api.newsapi.org`)
 - RUM enabled with `trackUserInteractions()`
 - Session Replay enabled (100% sample rate)
 - Logs enabled
