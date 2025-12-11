@@ -15,12 +15,12 @@ This is a news application built with:
 ## 🎯 Datadog Integration
 
 This app is fully instrumented with Datadog for automatic monitoring of:
-- ✅ User interactions (taps, swipes, clicks)
-- ✅ Network requests (API calls)
-- ✅ Errors and crashes
-- ✅ Session recordings (Session Replay)
-- ✅ Performance metrics
-- ✅ Distributed tracing
+- User interactions (taps, swipes, clicks)
+- Network requests (API calls)
+- Errors and crashes
+- Session recordings (Session Replay)
+- Performance metrics
+- Distributed tracing
 
 ## 🚀 Automatic Instrumentation Setup
 
@@ -114,34 +114,34 @@ The following fields are automatically generated from `local.properties`:
 ## 📊 What Gets Tracked Automatically
 
 ### User Interactions
-- ✅ All taps on buttons, cards, navigation items
-- ✅ Swipes on RecyclerViews
-- ✅ Screen navigation
-- ✅ Floating action button clicks
+- All taps on buttons, cards, navigation items
+- Swipes on RecyclerViews
+- Screen navigation
+- Floating action button clicks
 
 ### Network Requests
-- ✅ All API calls to `newsapi.org`
-- ✅ Request/response times
-- ✅ Status codes (200, 404, 500, etc.)
-- ✅ Network errors
-- ✅ Request/response sizes
+- All API calls to `newsapi.org`
+- Request/response times
+- Status codes (200, 404, 500, etc.)
+- Network errors
+- Request/response sizes
 
 ### Errors & Crashes
-- ✅ Unhandled exceptions
-- ✅ Crashes
-- ✅ Network errors
-- ✅ Stack traces with source mapping
+- Unhandled exceptions
+- Crashes
+- Network errors
+- Stack traces with source mapping
 
 ### Performance Metrics
-- ✅ Screen load times
-- ✅ Time-to-Network-Settled (TNS)
-- ✅ Interaction-to-Next-View (INV)
-- ✅ Network request durations
+- Screen load times
+- Time-to-Network-Settled (TNS)
+- Interaction-to-Next-View (INV)
+- Network request durations
 
 ### Session Replay
-- ✅ Complete user session recordings
-- ✅ Visual replay of user interactions
-- ✅ Privacy masking (text shown as "XXXXX")
+- Complete user session recordings
+- Visual replay of user interactions
+- Privacy masking (text shown as "XXXXX")
 
 ## 🔒 Security Considerations
 
@@ -234,18 +234,18 @@ app/
 - [RUM Setup Guide](https://docs.datadoghq.com/real_user_monitoring/mobile_and_tv_monitoring/android/setup/)
 - [Session Replay](https://docs.datadoghq.com/real_user_monitoring/session_replay/)
 
-## ✅ Checklist
+## Checklist
 
-- [x] Datadog SDK initialized
-- [x] RUM enabled with automatic user interaction tracking
-- [x] Network interceptors configured (DatadogInterceptor + TracingInterceptor)
-- [x] Session Replay enabled
-- [x] Logs enabled
-- [x] Traces enabled
-- [x] First-party hosts configured
-- [x] User information set
-- [x] Error handling for site configuration
-- [x] ProGuard rules configured
+- Datadog SDK initialized
+- RUM enabled with automatic user interaction tracking
+- Network interceptors configured (DatadogInterceptor + TracingInterceptor)
+- Session Replay enabled
+- Logs enabled
+- Traces enabled
+- First-party hosts configured
+- User information set
+- Error handling for site configuration
+- ProGuard rules configured
 
 ## 🎉 Summary
 

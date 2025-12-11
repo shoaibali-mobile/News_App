@@ -6,6 +6,79 @@ Complete guide to Datadog Real User Monitoring (RUM) integration with automatic 
 
 This application is fully instrumented with Datadog for comprehensive monitoring of user interactions, network requests, errors, and performance metrics. All tracking is **automatic** - no manual instrumentation code required.
 
+## 🔄 Automated vs Manual Instrumentation
+
+### Branch Information
+
+**Current Branch: `main` / `master`**
+- This branch uses **Automated Instrumentation** approach
+- All Datadog tracking is configured to work automatically
+- No manual tracking code is present in this branch
+
+**Alternative Branch:**
+- A separate branch may exist for **Manual Instrumentation** approach
+- That branch would contain explicit tracking calls throughout the codebase
+- Check other branches if you want to see manual instrumentation examples
+
+### What is Automated Instrumentation?
+
+**Automated Instrumentation** means the Datadog SDK automatically tracks events without requiring you to add tracking code throughout your application. Once configured, it works out of the box.
+
+**What This Branch Uses:**
+This branch (`main`/`master`) implements **Automated Instrumentation** approach. We have configured the Datadog SDK to automatically track:
+- All screen views (Activities and Fragments)
+- All user interactions (taps, swipes, clicks)
+- All network requests (via interceptors)
+- All errors and crashes
+- Complete session replays
+
+**Benefits:**
+- Zero manual tracking code needed in your UI components
+- Consistent tracking across the entire app
+- Less code to maintain
+- Automatic updates when SDK improves
+- No risk of forgetting to track important events
+
+### What is Manual Instrumentation?
+
+**Manual Instrumentation** requires you to explicitly add tracking code at specific points in your application where you want to monitor events.
+
+**Example of Manual Approach:**
+```kotlin
+// You would need to add this everywhere you want to track
+GlobalRumMonitor.get().addUserAction(
+    RumActionType.CLICK,
+    "button_clicked",
+    emptyMap()
+)
+```
+
+**When to Use Manual:**
+- When you need custom events not automatically tracked
+- When you want to track specific business logic events
+- When you need fine-grained control over what gets tracked
+
+### This Branch's Approach (main/master)
+
+**This branch uses Automated Instrumentation** because:
+1. It covers all standard monitoring needs (views, interactions, network, errors)
+2. It requires minimal setup - just configure once in `NewsApplication.kt` and `NetworkModule.kt`
+3. It automatically tracks everything without cluttering your codebase
+4. It's the recommended approach for most applications
+
+**What We Configured:**
+- Datadog SDK initialization with automatic view tracking
+- Network interceptors (`DatadogInterceptor` and `TracingInterceptor`) for automatic network monitoring
+- RUM with `trackUserInteractions()` for automatic interaction tracking
+- Session Replay for automatic session recording
+- Automatic error and crash tracking
+
+**No Manual Code Required:**
+- No tracking calls in Fragments or Activities
+- No manual event logging in ViewModels
+- No manual network request tracking
+- Everything is tracked automatically by the SDK
+
 ## 🎯 What is Real User Monitoring (RUM)?
 
 Real User Monitoring (RUM) tracks real users using your app in real-time. It provides:
