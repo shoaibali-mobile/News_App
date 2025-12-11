@@ -15,10 +15,6 @@ This application is fully instrumented with Datadog for comprehensive monitoring
 - All Datadog tracking is configured to work automatically
 - No manual tracking code is present in this branch
 
-**Alternative Branch:**
-- A separate branch may exist for **Manual Instrumentation** approach
-- That branch would contain explicit tracking calls throughout the codebase
-- Check other branches if you want to see manual instrumentation examples
 
 ### What is Automated Instrumentation?
 
