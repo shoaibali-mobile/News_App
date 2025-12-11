@@ -1,5 +1,7 @@
 package com.shoaib.demodatadog.di
 
+import com.datadog.android.okhttp.DatadogInterceptor
+import com.datadog.android.okhttp.trace.TracingInterceptor
 import com.shoaib.demodatadog.BuildConfig
 import com.shoaib.demodatadog.data.remote.NewsApiService
 import dagger.Module
@@ -16,13 +18,29 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
     
+    private val tracedHosts = listOf(
+        "newsapi.org",
+        "api.newsapi.org"
+    )
+    
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
+        // for prod
+        //level = HttpLoggingInterceptor.Level.NONE
+
         return OkHttpClient.Builder()
+            .addInterceptor(
+                DatadogInterceptor.Builder(tracedHosts)
+                    .build()
+            )
+            .addNetworkInterceptor(
+                TracingInterceptor.Builder(tracedHosts)
+                    .build()
+            )
             .addInterceptor(logging)
             .build()
     }

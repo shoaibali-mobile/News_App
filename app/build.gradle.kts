@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.datadog.logs)
     implementation(libs.datadog.trace)
     implementation(libs.datadog.okhttp)
+    implementation(libs.datadog.session.replay)
     
     // Testing
     testImplementation(libs.junit)
