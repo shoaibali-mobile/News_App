@@ -379,71 +379,87 @@ SessionReplayConfiguration.Builder(50f)  // 50% of sessions
 
 
 
-Dashboard
+## 📊 Datadog Dashboard Screenshots
 
+### Existing Dashboard
 
-Existing Dashboard:
+The default Datadog dashboard provides a comprehensive overview of your application's health and performance metrics. It displays key indicators including session counts, error rates, and response times in a single unified view.
 
 <img width="1422" height="809" alt="Screenshot 2025-12-11 at 3 20 58 PM" src="https://github.com/user-attachments/assets/650eb8d2-0749-4766-a994-1f6f3d047182" />
 
+### Custom Dashboard
 
-Custom Dashboard
+A customized dashboard allows you to create personalized views tailored to your specific monitoring needs. You can add widgets for specific metrics, create custom queries, and organize information in a way that makes sense for your team.
 
 <img width="1427" height="815" alt="Custom Dashboard" src="https://github.com/user-attachments/assets/4698f7ac-bbd8-4e4a-9a6d-21d9eb62c094" />
 
-RUM 
+### Performance Monitoring
 
-
-PERFORMANCE MONITORING :
+The Performance Monitoring dashboard shows detailed metrics about your application's performance including load times, network request durations, and view rendering performance. It helps identify bottlenecks and optimize user experience by tracking key performance indicators over time.
 
 <img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 23 34 PM" src="https://github.com/user-attachments/assets/6c59c5af-ebd7-431f-b7f0-164012862819" />
 
+### Session Replay
 
-Session Replay :
+Session Replay provides a visual recording of user sessions, allowing you to see exactly what users experienced in your application. You can watch complete user journeys, identify UI issues, and understand the context behind errors by replaying sessions frame by frame.
+
 <img width="1440" height="900" alt="Session Replay" src="https://github.com/user-attachments/assets/1b8c0149-34f8-43d5-9a93-b55f1ec88e09" />
 
-Error Tracking :
+### Error Tracking
+
+The Error Tracking dashboard displays all errors and exceptions that occur in your application, grouped by type and frequency. It provides detailed stack traces, shows which users were affected, and helps you prioritize which errors to fix first based on impact and occurrence rate.
 
 <img width="1440" height="900" alt="Error Tracking" src="https://github.com/user-attachments/assets/9259dd5e-7f4b-45d7-9e3f-5c967b16e632" />
 
-We can fine-grained control over our  usage by allowing you to choose which errors should be included by Error Tracking.
+### Error Tracking Configuration
+
+You can have fine-grained control over error tracking by choosing which errors should be included in monitoring. This configuration screen allows you to filter errors by type, severity, or custom rules, ensuring you only track the errors that matter most to your application's health.
 
 <img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 32 24 PM" src="https://github.com/user-attachments/assets/44bc01c2-dfe7-4da0-bb16-bc838f5adbd0" />
 
+### Alert Monitors
 
-Alert Monitor
+Alert Monitors allow you to set up automated notifications when specific conditions are met, such as error rates exceeding thresholds or performance metrics degrading. You can configure alerts to notify your team via email, Slack, PagerDuty, or other integrations when issues occur.
 
 <img width="1440" height="900" alt="Alert Monitors" src="https://github.com/user-attachments/assets/7e30f3e5-ade7-46cb-a8a5-78edabceddee" />
 
-Declare Inicdent
+### Declare Incident
+
+The Declare Incident feature enables you to manually create and track incidents when critical issues are detected. This helps coordinate response efforts, track incident resolution progress, and maintain a record of all major events that impact your application's availability or performance.
 
 <img width="1415" height="782" alt="Declare Incident" src="https://github.com/user-attachments/assets/a50efaca-caba-4985-bcd4-6425652eff9c" />
 
+### Session Explorer
 
+The Session Explorer provides a searchable interface to browse and filter all user sessions captured by RUM. You can search by user ID, device type, country, error occurrence, or custom attributes to find specific sessions and analyze user behavior patterns.
 
-Session Explorer:
 <img width="1440" height="826" alt="Sessions Explorer" src="https://github.com/user-attachments/assets/1e9a02b8-bf1f-499c-b3c2-cbb63f6b5f91" />
 
+### Performance Analytics - Users
 
-Performanace Analytics
+The Users analytics view shows detailed information about your user base including geographic distribution, device types, and operating system versions. This helps you understand your audience demographics and identify which user segments may be experiencing performance issues.
 
-Users
 ![User](https://github.com/user-attachments/assets/1765468c-c744-4d61-80dd-29bf47286dc8)
+
+The Performance Analytics dashboard for users displays metrics broken down by user segments, allowing you to identify which groups of users are experiencing the best or worst performance. You can analyze trends, compare different user cohorts, and optimize the experience for specific user groups.
 
 <img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 50 03 PM" src="https://github.com/user-attachments/assets/124c8c86-57c0-4100-9b33-4e75c6edd408" />
 
+### Engagement
 
-
-Engagement
+The Engagement dashboard tracks how users interact with your application, including session duration, number of views per session, and user retention metrics. It helps you understand user behavior patterns and identify opportunities to improve user engagement and retention.
 
 <img width="1419" height="772" alt="Engagement" src="https://github.com/user-attachments/assets/628570c9-9bd7-4519-86f7-8e31ade790b2" />
 
+### Traffic
 
-Traffic
+The Traffic dashboard visualizes network traffic patterns, showing request volumes, response times, and traffic distribution across different endpoints. It helps you identify peak usage times, understand traffic patterns, and detect anomalies in network activity that might indicate issues.
 
 <img width="1440" height="900" alt="P Traffic" src="https://github.com/user-attachments/assets/5577fbd2-b6f0-44b6-ad39-ac97ff7370f2" />
 
-Application Management 
+### Application Management
+
+The Application Management screen provides an overview of all configured RUM applications, their status, and key metrics. You can manage application settings, view configuration details, and monitor the health of all your monitored applications from a single centralized location.
 
 <img width="1434" height="791" alt="Screenshot 2025-12-11 at 4 00 04 PM" src="https://github.com/user-attachments/assets/2098fa49-1cdd-40d0-b1bc-7571d54ed08c" />
 
