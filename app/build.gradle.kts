@@ -30,11 +30,14 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         buildConfigField("String", "NEWS_API_KEY", "\"${localProperties.getProperty("NEWS_API_KEY") ?: ""}\"")
+        buildConfigField("String", "DATADOG_CLIENT_TOKEN", "\"${localProperties.getProperty("DATADOG_CLIENT_TOKEN") ?: ""}\"")
+        buildConfigField("String", "DATADOG_APPLICATION_ID", "\"${localProperties.getProperty("DATADOG_APPLICATION_ID") ?: ""}\"")
+        buildConfigField("String", "DATADOG_ENV", "\"${localProperties.getProperty("DATADOG_ENV") ?: "dev"}\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -96,6 +99,12 @@ dependencies {
     
     // Gson
     implementation(libs.gson)
+    
+    // Datadog
+    implementation(libs.datadog.rum)
+    implementation(libs.datadog.logs)
+    implementation(libs.datadog.trace)
+    implementation(libs.datadog.okhttp)
     
     // Testing
     testImplementation(libs.junit)
