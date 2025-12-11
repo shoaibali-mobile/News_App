@@ -377,6 +377,74 @@ SessionReplayConfiguration.Builder(50f)  // 50% of sessions
    - See sessions, errors, performance metrics
    - Click on any session to replay it
 
+
+
+Dashboard
+
+
+Existing Dashboard:
+
+<img width="1422" height="809" alt="Screenshot 2025-12-11 at 3 20 58 PM" src="https://github.com/user-attachments/assets/650eb8d2-0749-4766-a994-1f6f3d047182" />
+
+
+Custom Dashboard
+
+<img width="1427" height="815" alt="Custom Dashboard" src="https://github.com/user-attachments/assets/4698f7ac-bbd8-4e4a-9a6d-21d9eb62c094" />
+
+RUM 
+
+
+PERFORMANCE MONITORING :
+
+<img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 23 34 PM" src="https://github.com/user-attachments/assets/6c59c5af-ebd7-431f-b7f0-164012862819" />
+
+
+Session Replay :
+<img width="1440" height="900" alt="Session Replay" src="https://github.com/user-attachments/assets/1b8c0149-34f8-43d5-9a93-b55f1ec88e09" />
+
+Error Tracking :
+
+<img width="1440" height="900" alt="Error Tracking" src="https://github.com/user-attachments/assets/9259dd5e-7f4b-45d7-9e3f-5c967b16e632" />
+
+We can fine-grained control over our  usage by allowing you to choose which errors should be included by Error Tracking.
+
+<img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 32 24 PM" src="https://github.com/user-attachments/assets/44bc01c2-dfe7-4da0-bb16-bc838f5adbd0" />
+
+
+Alert Monitor
+
+<img width="1440" height="900" alt="Alert Monitors" src="https://github.com/user-attachments/assets/7e30f3e5-ade7-46cb-a8a5-78edabceddee" />
+
+Declare Inicdent
+
+<img width="1415" height="782" alt="Declare Incident" src="https://github.com/user-attachments/assets/a50efaca-caba-4985-bcd4-6425652eff9c" />
+
+
+
+Session Explorer:
+<img width="1440" height="826" alt="Sessions Explorer" src="https://github.com/user-attachments/assets/1e9a02b8-bf1f-499c-b3c2-cbb63f6b5f91" />
+
+
+Performanace Analytics
+
+Users
+![User](https://github.com/user-attachments/assets/1765468c-c744-4d61-80dd-29bf47286dc8)
+
+<img width="1440" height="900" alt="Screenshot 2025-12-11 at 3 50 03 PM" src="https://github.com/user-attachments/assets/124c8c86-57c0-4100-9b33-4e75c6edd408" />
+
+
+
+Engagement
+
+<img width="1419" height="772" alt="Engagement" src="https://github.com/user-attachments/assets/628570c9-9bd7-4519-86f7-8e31ade790b2" />
+
+
+Traffic
+
+<img width="1440" height="900" alt="P Traffic" src="https://github.com/user-attachments/assets/5577fbd2-b6f0-44b6-ad39-ac97ff7370f2" />
+
+   
+
 ## 📚 Additional Resources
 
 - [Datadog Real User Monitoring (RUM) Documentation](https://docs.datadoghq.com/real_user_monitoring/)
@@ -385,20 +453,6 @@ SessionReplayConfiguration.Builder(50f)  // 50% of sessions
 - [Session Replay Guide](https://docs.datadoghq.com/real_user_monitoring/session_replay/)
 - [Error Tracking Guide](https://docs.datadoghq.com/real_user_monitoring/error_tracking/)
 
-## ✅ Verification Checklist
 
-- [x] Datadog SDK initialized
-- [x] RUM enabled with automatic user interaction tracking
-- [x] Network interceptors configured (DatadogInterceptor + TracingInterceptor)
-- [x] Session Replay enabled
-- [x] Logs enabled
-- [x] Traces enabled
-- [x] First-party hosts configured
-- [x] User information set
-- [x] Error handling for site configuration
-- [x] ProGuard rules configured
 
----
-
-**Status**: ✅ Fully configured for automatic instrumentation. All features working automatically!
 
