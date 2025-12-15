@@ -9,12 +9,17 @@ import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.log.Logs
 import com.datadog.android.log.LogsConfiguration
 import com.datadog.android.log.Logger
+import android.app.Activity
+import androidx.fragment.app.Fragment
 import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumConfiguration
+import com.datadog.android.rum.tracking.ComponentPredicate
+import com.datadog.android.rum.tracking.MixedViewTrackingStrategy
 import com.datadog.android.trace.Trace
 import com.datadog.android.trace.TraceConfiguration
 import com.datadog.android.sessionreplay.SessionReplay
 import com.datadog.android.sessionreplay.SessionReplayConfiguration
+import com.shoaib.demodatadog.util.DatadogLogger
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -53,9 +58,9 @@ class NewsApplication : Application() {
             
             // Set user information
             Datadog.setUserInfo(
-                id = "shoaib349298290292",
-                name = "Shoaib",
-                email = "shoaibali26021999@gmail.com"
+                id = "Gohan349298290292",
+                name = "Gohan",
+                email = "Gohan@gmail.com"
             )
             
             // Initialize Session Replay
@@ -70,17 +75,42 @@ class NewsApplication : Application() {
             val logsConfig = LogsConfiguration.Builder().build()
             Logs.enable(logsConfig)
             
-            // Create logger instance
+            // Create logger instance and initialize singleton
             val logger = Logger.Builder()
                 .setNetworkInfoEnabled(true)
                 .setLogcatLogsEnabled(true)
                 .setName("AppLogger")
                 .build()
-            logger.i("Datadog logging initialized!")
             
-            // Initialize RUM with automatic instrumentation
+            // Initialize the singleton logger
+            DatadogLogger.initialize(logger)
+            
+            // Use singleton logger
+            DatadogLogger.i("Datadog logging initialized!")
+            
+            // Initialize RUM with custom view name provider to show only simple class names
+            val activityPredicate = object : ComponentPredicate<Activity> {
+                override fun accept(component: Activity): Boolean = true
+                override fun getViewName(component: Activity): String? {
+                    return component.javaClass.simpleName
+                }
+            }
+            
+            val fragmentPredicate = object : ComponentPredicate<Fragment> {
+                override fun accept(component: Fragment): Boolean = true
+                override fun getViewName(component: Fragment): String? {
+                    return component.javaClass.simpleName
+                }
+            }
+            
             val rumConfiguration = RumConfiguration.Builder(applicationId)
-                .trackUserInteractions()  // Automatic user interaction tracking
+                .useViewTrackingStrategy(
+                    MixedViewTrackingStrategy(
+                        trackExtras = true,
+                        componentPredicate = activityPredicate,
+                        supportFragmentComponentPredicate = fragmentPredicate
+                    )
+                )
                 .build()
             Rum.enable(rumConfiguration)
             

@@ -9,11 +9,13 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.datadog.android.rum.RumActionType
 import com.shoaib.demodatadog.R
 import com.shoaib.demodatadog.databinding.FragmentCategoriesBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.adapter.CategoryAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -39,6 +41,7 @@ class CategoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        DatadogTracker.startScreen("category_fragment", "Category Screen")
         setupRecyclerViews()
         observeViewModel()
         setupSwipeRefresh()
@@ -49,6 +52,7 @@ class CategoryFragment : Fragment() {
 
     private fun setupRecyclerViews() {
         categoryAdapter = CategoryAdapter(categories) { category ->
+            DatadogTracker.trackCategorySelected(category)
             viewModel.loadCategory(category)
         }
         binding.categoriesRecyclerView.layoutManager =
@@ -56,6 +60,22 @@ class CategoryFragment : Fragment() {
         binding.categoriesRecyclerView.adapter = categoryAdapter
 
         articleAdapter = ArticleAdapter { article ->
+            DatadogTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "category"
+                )
+            )
+            DatadogTracker.trackNavigation(
+                "category",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
             val bundle = Bundle().apply {
                 putParcelable(ArticleDetailActivity.EXTRA_ARTICLE, article)
             }
@@ -82,6 +102,11 @@ class CategoryFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefresh.setOnRefreshListener {
+            DatadogTracker.trackAction(
+                RumActionType.SWIPE,
+                "pull_to_refresh",
+                mapOf("screen" to "category")
+            )
             if (categories.isNotEmpty()) {
                 val selectedPos = categoryAdapter.selectedPosition
                 if (selectedPos in categories.indices) {
@@ -93,6 +118,7 @@ class CategoryFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        DatadogTracker.stopScreen("category_fragment")
         super.onDestroyView()
         _binding = null
     }

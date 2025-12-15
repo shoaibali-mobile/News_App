@@ -14,6 +14,7 @@ import com.shoaib.demodatadog.R
 import com.shoaib.demodatadog.databinding.FragmentSearchBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -34,6 +35,7 @@ class SearchFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        DatadogTracker.startScreen("search_fragment", "Search Screen")
         setupRecyclerView()
         observeViewModel()
         setupSearch()
@@ -41,6 +43,22 @@ class SearchFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = ArticleAdapter { article ->
+            DatadogTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "search"
+                )
+            )
+            DatadogTracker.trackNavigation(
+                "search",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
             val bundle = Bundle().apply {
                 putParcelable(ArticleDetailActivity.EXTRA_ARTICLE, article)
             }
@@ -68,6 +86,9 @@ class SearchFragment : Fragment() {
         binding.searchEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val query = binding.searchEditText.text?.toString() ?: ""
+                if (query.isNotEmpty()) {
+                    DatadogTracker.trackSearchPerformed(query)
+                }
                 viewModel.search(query)
                 true
             } else {
@@ -75,7 +96,6 @@ class SearchFragment : Fragment() {
             }
         }
 
-        // Handle clear icon click
         binding.searchInputLayout.setEndIconOnClickListener {
             binding.searchEditText.text?.clear()
             viewModel.search("")
@@ -83,6 +103,7 @@ class SearchFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        DatadogTracker.stopScreen("search_fragment")
         super.onDestroyView()
         _binding = null
     }

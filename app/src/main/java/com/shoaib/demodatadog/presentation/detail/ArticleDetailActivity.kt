@@ -17,6 +17,7 @@ import com.shoaib.demodatadog.R
 import com.shoaib.demodatadog.databinding.ActivityArticleDetailBinding
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.util.DateFormatter
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -32,7 +33,18 @@ class ArticleDetailActivity : AppCompatActivity() {
         binding = ActivityArticleDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        article = intent.getParcelableExtra(EXTRA_ARTICLE, Article::class.java) ?: return
+        article =  intent.getParcelableExtra<Article>(EXTRA_ARTICLE) ?: return
+
+        DatadogTracker.startScreen(
+            "article_detail",
+            "Article Detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "article_source" to (article.sourceName ?: "unknown")
+            )
+        )
+        DatadogTracker.trackArticleViewed(article.id, article.title, article.sourceName)
 
         setupEdgeToEdge()
         setupToolbar()
@@ -82,6 +94,14 @@ class ArticleDetailActivity : AppCompatActivity() {
         }
 
         binding.favoriteFab.setOnClickListener {
+            DatadogTracker.trackButtonClick(
+                "favorite",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "current_favorite_state" to viewModel.isFavorite.value.toString()
+                )
+            )
             viewModel.toggleFavorite(article)
         }
     }
@@ -113,12 +133,25 @@ class ArticleDetailActivity : AppCompatActivity() {
     }
 
     private fun shareArticle() {
+        DatadogTracker.trackButtonClick(
+            "share",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
+        DatadogTracker.trackArticleShared(article.id, article.title, "system_share")
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, article.title)
             putExtra(Intent.EXTRA_TEXT, article.url)
         }
         startActivity(Intent.createChooser(intent, "Share article"))
+    }
+
+    override fun onDestroy() {
+        DatadogTracker.stopScreen("article_detail")
+        super.onDestroy()
     }
 
     companion object {

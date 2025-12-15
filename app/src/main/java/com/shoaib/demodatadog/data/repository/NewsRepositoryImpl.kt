@@ -6,6 +6,7 @@ import com.shoaib.demodatadog.data.mapper.toFavoriteEntity
 import com.shoaib.demodatadog.data.remote.NewsApiService
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.domain.repository.NewsRepository
+import com.shoaib.demodatadog.util.DatadogTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -21,6 +22,16 @@ class NewsRepositoryImpl @Inject constructor(
             val response = apiService.getTopHeadlines(apiKey, country, page = page)
             Result.success(response.articles.map { it.toArticle() })
         } catch (e: Exception) {
+            // RUM tracking only (for user analytics)
+            DatadogTracker.trackNetworkError(
+                message = "Failed to load top headlines",
+                throwable = e,
+                attributes = mapOf(
+                    "endpoint" to "top-headlines",
+                    "country" to country,
+                    "page" to page.toString()
+                )
+            )
             Result.failure(e)
         }
     }
@@ -30,6 +41,15 @@ class NewsRepositoryImpl @Inject constructor(
             val response = apiService.getHeadlinesByCategory(apiKey, category, page = page)
             Result.success(response.articles.map { it.toArticle() })
         } catch (e: Exception) {
+            DatadogTracker.trackNetworkError(
+                message = "Failed to load headlines by category",
+                throwable = e,
+                attributes = mapOf(
+                    "endpoint" to "headlines-by-category",
+                    "category" to category,
+                    "page" to page.toString()
+                )
+            )
             Result.failure(e)
         }
     }
@@ -39,6 +59,15 @@ class NewsRepositoryImpl @Inject constructor(
             val response = apiService.searchNews(apiKey, query, page = page)
             Result.success(response.articles.map { it.toArticle() })
         } catch (e: Exception) {
+            DatadogTracker.trackNetworkError(
+                message = "Failed to search news",
+                throwable = e,
+                attributes = mapOf(
+                    "endpoint" to "search-news",
+                    "query" to query,
+                    "page" to page.toString()
+                )
+            )
             Result.failure(e)
         }
     }

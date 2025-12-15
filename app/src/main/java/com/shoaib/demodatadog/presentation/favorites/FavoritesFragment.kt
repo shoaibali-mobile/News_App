@@ -13,6 +13,7 @@ import com.shoaib.demodatadog.R
 import com.shoaib.demodatadog.databinding.FragmentFavoritesBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -33,12 +34,29 @@ class FavoritesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        DatadogTracker.startScreen("favorites_fragment", "Favorites Screen")
         setupRecyclerView()
         observeViewModel()
     }
 
     private fun setupRecyclerView() {
         adapter = ArticleAdapter { article ->
+            DatadogTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "favorites"
+                )
+            )
+            DatadogTracker.trackNavigation(
+                "favorites",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
             val bundle = Bundle().apply {
                 putParcelable(ArticleDetailActivity.EXTRA_ARTICLE, article)
             }
@@ -58,6 +76,7 @@ class FavoritesFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        DatadogTracker.stopScreen("favorites_fragment")
         super.onDestroyView()
         _binding = null
     }
