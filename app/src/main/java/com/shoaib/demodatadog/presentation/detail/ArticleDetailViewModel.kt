@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.domain.repository.NewsRepository
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,8 +29,10 @@ class ArticleDetailViewModel @Inject constructor(
     fun toggleFavorite(article: Article) {
         viewModelScope.launch {
             if (_isFavorite.value) {
+                DatadogTracker.trackArticleUnfavorited(article.id, article.title)
                 repository.removeFromFavorites(article.id)
             } else {
+                DatadogTracker.trackArticleFavorited(article.id, article.title)
                 repository.addToFavorites(article)
             }
             _isFavorite.value = !_isFavorite.value

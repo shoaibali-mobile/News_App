@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.domain.repository.NewsRepository
+import com.shoaib.demodatadog.util.DatadogLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,17 @@ class CategoryViewModel @Inject constructor(
                     _uiState.value = CategoryUiState.Success
                 },
                 onFailure = { error ->
+                    // Logging only (for debugging ViewModel issues)
+                    DatadogLogger.e(
+                        message = "Failed to load category headlines in ViewModel",
+                        throwable = error,
+                        attributes = mapOf(
+                            "screen" to "category",
+                            "action" to "load_category",
+                            "category" to category,
+                            "page" to currentPage.toString()
+                        )
+                    )
                     _uiState.value = CategoryUiState.Error(error.message ?: "Unknown error")
                 }
             )
@@ -52,7 +64,19 @@ class CategoryViewModel @Inject constructor(
                 onSuccess = { newArticles ->
                     _articles.value = _articles.value + newArticles
                 },
-                onFailure = { }
+                onFailure = { error ->
+                    // Logging only (for debugging)
+                    DatadogLogger.e(
+                        message = "Failed to load more category headlines",
+                        throwable = error,
+                        attributes = mapOf(
+                            "screen" to "category",
+                            "action" to "load_more",
+                            "category" to currentCategory,
+                            "page" to currentPage.toString()
+                        )
+                    )
+                }
             )
         }
     }

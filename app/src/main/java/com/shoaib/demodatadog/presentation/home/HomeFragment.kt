@@ -9,10 +9,12 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.datadog.android.rum.RumActionType
 import com.shoaib.demodatadog.R
 import com.shoaib.demodatadog.databinding.FragmentHomeBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
+import com.shoaib.demodatadog.util.DatadogTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -33,6 +35,7 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        DatadogTracker.startScreen("home_fragment", "Home Screen")
         setupRecyclerView()
         observeViewModel()
         setupSwipeRefresh()
@@ -40,6 +43,22 @@ class HomeFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = ArticleAdapter { article ->
+            DatadogTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "home"
+                )
+            )
+            DatadogTracker.trackNavigation(
+                "home",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
             val bundle = Bundle().apply {
                 putParcelable(ArticleDetailActivity.EXTRA_ARTICLE, article)
             }
@@ -71,6 +90,14 @@ class HomeFragment : Fragment() {
                         binding.progressBar.visibility = View.GONE
                         binding.errorText.visibility = View.VISIBLE
                         binding.errorText.text = state.message
+                        DatadogTracker.trackError(
+                            "Failed to load articles",
+                            null,
+                            attributes = mapOf(
+                                "screen" to "home",
+                                "error_message" to (state.message ?: "Unknown error")
+                            )
+                        )
                     }
                 }
             }
@@ -79,12 +106,18 @@ class HomeFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefresh.setOnRefreshListener {
+            DatadogTracker.trackAction(
+                RumActionType.SWIPE,
+                "pull_to_refresh",
+                mapOf("screen" to "home")
+            )
             viewModel.refresh()
             binding.swipeRefresh.isRefreshing = false
         }
     }
 
     override fun onDestroyView() {
+        DatadogTracker.stopScreen("home_fragment")
         super.onDestroyView()
         _binding = null
     }
