@@ -1,880 +1,618 @@
-# Datadog Instrumentation Documentation
+# Datadog Instrumentation: Theory and Best Practices
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Automatic Instrumentation](#automatic-instrumentation)
-3. [Manual Instrumentation](#manual-instrumentation)
-4. [Hybrid Approach: Best Practice](#hybrid-approach-best-practice)
-5. [Code Reference Guide](#code-reference-guide)
-6. [Decision Matrix](#decision-matrix)
-7. [Production Recommendations](#production-recommendations)
+1. [Introduction](#introduction)
+2. [Understanding Automatic Instrumentation](#understanding-automatic-instrumentation)
+3. [Understanding Manual Instrumentation](#understanding-manual-instrumentation)
+4. [Hybrid Approach: The Production Standard](#hybrid-approach-the-production-standard)
+5. [Production-Level Best Practices](#production-level-best-practices)
+6. [Decision Framework](#decision-framework)
 
 ---
 
-## Overview
+## Introduction
 
-This application implements a **hybrid instrumentation strategy** that combines Datadog's automatic tracking capabilities with custom manual tracking for business-specific events. This approach ensures comprehensive monitoring coverage while maintaining code maintainability and providing actionable business insights.
+Modern mobile applications require comprehensive monitoring to understand user behavior, diagnose issues, and optimize performance. Datadog provides two complementary approaches to instrumentation: **automatic** and **manual**. Understanding when and how to use each approach is crucial for building production-ready applications.
 
-### Key Statistics
+### The Instrumentation Spectrum
 
-- **Automatic Tracking:** ~70% of all events (views, interactions, network, crashes)
-- **Manual Tracking:** ~30% of all events (business logic, custom context, handled errors)
-- **Total Files with Instrumentation:** 15+ files across the codebase
-- **Manual Tracking Utilities:** 2 singleton objects (`DatadogTracker`, `DatadogLogger`)
+Instrumentation exists on a spectrum:
+- **Pure Automatic:** SDK handles everything (ideal for standard events)
+- **Hybrid Approach:** Automatic for standard events, manual for business logic (recommended for production)
+- **Pure Manual:** Developer tracks everything (not recommended, high maintenance)
 
----
-
-## Automatic Instrumentation
-
-### Why We Use Automatic Instrumentation
-
-Automatic instrumentation eliminates the need for manual tracking code in standard application scenarios. This approach provides:
-
-1. **Zero-Code Tracking:** No need to add tracking code for common events
-2. **Consistency:** Uniform tracking across all components automatically
-3. **Maintenance Reduction:** SDK updates automatically improve tracking
-4. **Coverage Guarantee:** No risk of missing critical events
-5. **Performance Optimized:** SDK-level optimizations for minimal overhead
-
-### What We're Doing in Automatic Instrumentation
-
-#### 1. Screen/View Tracking
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/NewsApplication.kt`  
-**Lines:** 91-115
-
-**Configuration:**
-```kotlin
-// Lines 92-104: Custom view name predicates
-val activityPredicate = object : ComponentPredicate<Activity> {
-    override fun accept(component: Activity): Boolean = true
-    override fun getViewName(component: Activity): String? {
-        return component.javaClass.simpleName
-    }
-}
-
-val fragmentPredicate = object : ComponentPredicate<Fragment> {
-    override fun accept(component: Fragment): Boolean = true
-    override fun getViewName(component: Fragment): String? {
-        return component.javaClass.simpleName
-    }
-}
-
-// Lines 106-115: RUM configuration with custom view tracking
-val rumConfiguration = RumConfiguration.Builder(applicationId)
-    .useViewTrackingStrategy(
-        MixedViewTrackingStrategy(
-            trackExtras = true,
-            componentPredicate = activityPredicate,
-            supportFragmentComponentPredicate = fragmentPredicate
-        )
-    )
-    .build()
-Rum.enable(rumConfiguration)
-```
-
-**What's Tracked Automatically:**
-- ✅ All Activities: `MainActivity`, `ArticleDetailActivity`
-- ✅ All Fragments: `HomeFragment`, `CategoryFragment`, `SearchFragment`, `FavoritesFragment`
-- ✅ View load times and durations
-- ✅ View transitions and navigation flows
-- ✅ Custom view names: Simple class names (e.g., `"MainActivity"` instead of `"com.shoaib.demodatadog.MainActivity"`)
-
-**Result:** All screens are automatically tracked without any tracking code in Activities or Fragments.
+Most production applications benefit from a **hybrid approach**, leveraging automatic instrumentation for standard events while using manual tracking for business-specific insights.
 
 ---
 
-#### 2. User Interactions
+## Understanding Automatic Instrumentation
 
-**Configuration:** Enabled by default with RUM (no explicit configuration)
+### What is Automatic Instrumentation?
 
-**What's Tracked Automatically:**
-- ✅ All taps on buttons, cards, and views
-- ✅ Swipes on RecyclerViews
-- ✅ FloatingActionButton clicks
-- ✅ Bottom navigation clicks
-- ✅ TextInputEditText interactions
-- ✅ All touch events and gestures
+Automatic instrumentation refers to the SDK's ability to track application events **without requiring explicit tracking code** from developers. The Datadog SDK uses various techniques to intercept and monitor application behavior at the system level.
 
-**How It Works:**
-The SDK intercepts touch events at the Android system level, requiring no code in UI components.
+### How Automatic Instrumentation Works
 
-**Example Events in Datadog:**
-```
-tap on FloatingActionButton(favoriteFab) on screen ArticleDetailActivity
-tap on TextInputEditText(searchEditText) on screen SearchFragment
-swipe on RecyclerView(recyclerView) on screen HomeFragment
-```
+#### 1. System-Level Interception
 
-**Note:** These events appear automatically in Datadog - no manual tracking code is required.
+The SDK integrates deeply with the Android framework to intercept events:
 
----
+- **View Tracking:** Uses Android's lifecycle callbacks (`onCreate`, `onStart`, `onResume`) to automatically detect when screens are displayed
+- **Interaction Tracking:** Intercepts touch events at the system level before they reach your UI components
+- **Network Tracking:** Uses OkHttp interceptors to monitor all network requests without modifying your API calls
+- **Crash Detection:** Hooks into the Android exception handling system to capture unhandled exceptions
 
-#### 3. Network Requests
+#### 2. Zero-Code Implementation
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/di/NetworkModule.kt`  
-**Lines:** 35-43
+Once configured, automatic instrumentation requires **zero additional code** in your application logic. The SDK:
 
-**Configuration:**
-```kotlin
-// Lines 21-24: First-party hosts configuration
-private val tracedHosts = listOf(
-    "newsapi.org",
-    "api.newsapi.org"
-)
+- Automatically tracks all Activities and Fragments
+- Captures all user interactions (taps, swipes, clicks)
+- Monitors all network requests made through configured HTTP clients
+- Records unhandled exceptions and crashes
+- Measures performance metrics (load times, rendering, network latency)
 
-// Lines 35-43: OkHttp interceptors
-OkHttpClient.Builder()
-    .addInterceptor(
-        DatadogInterceptor.Builder(tracedHosts)
-            .build()
-    )
-    .addNetworkInterceptor(
-        TracingInterceptor.Builder(tracedHosts)
-            .build()
-    )
-    .build()
-```
+#### 3. Configuration-Based Customization
 
-**Interceptors:**
-- **`DatadogInterceptor`** (Line 36-38): Tracks network requests for RUM monitoring
-- **`TracingInterceptor`** (Line 40-42): Creates distributed traces for APM integration
+While automatic, the SDK allows customization through configuration:
 
-**What's Tracked Automatically:**
-- ✅ All OkHttp requests (via Retrofit)
-- ✅ Request URL, method (GET, POST, etc.)
-- ✅ Response status codes (200, 404, 500, etc.)
-- ✅ Request/response times and durations
-- ✅ Request/response payload sizes
-- ✅ Network errors and failures
-- ✅ First-party hosts: `newsapi.org`, `api.newsapi.org`
+- **View Name Strategy:** Customize how screens are named (e.g., simple class names vs full package paths)
+- **First-Party Hosts:** Specify which domains should be tracked for network requests
+- **Sampling Rates:** Control how much data is collected (important for cost management)
+- **Privacy Settings:** Configure what data is masked or excluded
 
-**Result:** Every API call made through Retrofit is automatically tracked without any code in the repository layer.
+### Why Use Automatic Instrumentation?
 
----
+#### Advantages
 
-#### 4. Errors & Crashes
+1. **Zero Maintenance Overhead**
+   - No need to add tracking code in every component
+   - SDK updates automatically improve tracking capabilities
+   - Reduces risk of forgetting to track important events
 
-**Configuration:** Enabled by default with RUM
+2. **Comprehensive Coverage**
+   - Captures events you might forget to track manually
+   - Ensures consistent tracking across the entire application
+   - No gaps in monitoring coverage
 
-**What's Tracked Automatically:**
-- ✅ Unhandled exceptions
-- ✅ Application crashes
-- ✅ Stack traces with source mapping
-- ✅ Error grouping and aggregation
+3. **Performance Optimized**
+   - SDK-level optimizations minimize performance impact
+   - Efficient data collection and batching
+   - Minimal memory and battery usage
 
-**Important Distinction:**
-- ✅ **Automatic:** Unhandled exceptions and crashes
-- ❌ **NOT Automatic:** Handled errors (try-catch blocks) - these require manual tracking
+4. **Standardization**
+   - Consistent event naming and structure
+   - Follows industry best practices
+   - Easy to understand and analyze
 
----
+#### Limitations
 
-#### 5. Session Replay
+1. **Generic Event Names**
+   - Events are named based on UI components (e.g., "Button clicked")
+   - Not business-meaningful (e.g., "Add to cart button clicked")
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/NewsApplication.kt`  
-**Lines:** 66-69
+2. **Limited Business Context**
+   - Cannot automatically understand business logic
+   - Missing domain-specific attributes (e.g., product ID, category, user segment)
 
-**Configuration:**
-```kotlin
-val sessionReplayConfig = SessionReplayConfiguration.Builder(100f)
-    .build()
-SessionReplay.enable(sessionReplayConfig)
-```
+3. **Handled Errors Not Tracked**
+   - Only captures unhandled exceptions
+   - Errors caught in try-catch blocks require manual tracking
 
-**What's Tracked Automatically:**
-- ✅ Complete session recordings (up to 4 hours)
-- ✅ Visual replay of all user interactions
-- ✅ Privacy masking (sensitive text shown as "XXXXX")
-- ✅ 100% sample rate (all sessions recorded)
+4. **No Business Event Detection**
+   - Cannot automatically detect domain events (e.g., "purchase completed", "article favorited")
+   - Requires manual tracking for business metrics
 
-**Note:** For production, consider reducing sample rate to 10-20% to manage costs.
+### What Gets Tracked Automatically?
 
----
+#### Screen/View Tracking
+- All Activities and Fragments are automatically tracked
+- View load times and durations
+- View transitions and navigation flows
+- Custom view names can be configured
 
-#### 6. Performance Metrics
+#### User Interactions
+- All taps, clicks, and swipes
+- Button interactions
+- Text input interactions
+- RecyclerView scrolling and interactions
+- Bottom navigation changes
 
-**Configuration:** Enabled by default with RUM
+#### Network Requests
+- All HTTP/HTTPS requests through configured clients
+- Request/response times
+- Status codes and error responses
+- Request/response sizes
+- Network errors and failures
 
-**What's Tracked Automatically:**
-- ✅ Screen load times
-- ✅ Time-to-Network-Settled (TNS) - default 100ms threshold
-- ✅ Interaction-to-Next-View (INV) - default 3 seconds threshold
-- ✅ Network request durations
-- ✅ View rendering times
+#### Errors and Crashes
+- Unhandled exceptions
+- Application crashes
+- Stack traces with source mapping
+- Error grouping and aggregation
 
----
+#### Performance Metrics
+- Screen load times
+- Time-to-Network-Settled (TNS)
+- Interaction-to-Next-View (INV)
+- Network request durations
+- View rendering performance
 
-#### 7. Distributed Tracing
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/NewsApplication.kt`  
-**Lines:** 117-120
-
-**Configuration:**
-```kotlin
-val traceConfig = TraceConfiguration.Builder()
-    .build()
-Trace.enable(traceConfig)
-```
-
-**What's Tracked Automatically:**
-- ✅ Links network requests to distributed traces
-- ✅ End-to-end request tracing
-- ✅ APM (Application Performance Monitoring) integration
+#### Session Replay
+- Complete session recordings
+- Visual replay of user interactions
+- Privacy masking for sensitive data
 
 ---
 
-## Manual Instrumentation
+## Understanding Manual Instrumentation
 
-### Why We Use Manual Instrumentation
+### What is Manual Instrumentation?
 
-Manual instrumentation is essential for tracking business-specific events and adding contextual information that the SDK cannot automatically detect:
+Manual instrumentation involves **explicitly adding tracking code** to capture business-specific events, add contextual information, and track handled errors. This approach gives developers full control over what is tracked and what attributes are included.
 
-1. **Business Logic Events:** SDK cannot automatically detect domain-specific events (article_viewed, article_favorited, etc.)
-2. **Custom Context:** Adding business context to events (article_id, category, query, etc.)
-3. **Custom Screen Names:** Overriding automatic names with business-friendly labels
-4. **Handled Errors:** Tracking errors that are caught and handled in try-catch blocks
-5. **Debugging Information:** Detailed logs for troubleshooting ViewModel and business logic issues
+### How Manual Instrumentation Works
 
-### What We're Doing in Manual Instrumentation
+#### 1. Explicit Event Tracking
 
-#### 1. Business Events (RUM Tracking)
+Developers call tracking methods at specific points in the application flow:
 
-**Core Utility:** `app/src/main/java/com/shoaib/demodatadog/util/DatadogTracker.kt`
+- **Business Events:** Track domain-specific actions (e.g., "article_viewed", "purchase_completed")
+- **Custom Attributes:** Add business context (e.g., product ID, category, user segment)
+- **Error Context:** Add relevant information when errors occur
+- **User Journey:** Track navigation flows and user paths
 
-##### 1.1 Article Viewed
+#### 2. Two-Tier Architecture
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/detail/ArticleDetailActivity.kt`  
-**Line:** 47
+Our application uses a two-tier manual tracking approach:
 
-**Usage:**
-```kotlin
-DatadogTracker.trackArticleViewed(article.id, article.title, article.sourceName)
-```
+**RUM (Real User Monitoring) Tracking:**
+- Used for user-facing events and errors
+- Tracks business events that impact user experience
+- Provides analytics and user behavior insights
+- Example: Article viewed, favorited, shared
 
-**Implementation:** `DatadogTracker.kt` (Lines 104-113)
-```kotlin
-fun trackArticleViewed(articleId: String, articleTitle: String, source: String? = null) {
-    trackEvent(
-        "article_viewed",
-        mapOf(
-            "article_id" to articleId,
-            "article_title" to articleTitle,
-            "article_source" to (source ?: "unknown")
-        )
-    )
-}
-```
+**Logs Tracking:**
+- Used for debugging and troubleshooting
+- Tracks detailed error context for developers
+- Helps diagnose issues in ViewModels and business logic
+- Example: ViewModel error with full stack trace and context
 
-**Attributes Tracked:**
-- `article_id`: Unique identifier of the article
-- `article_title`: Title of the article
-- `article_source`: Source name of the article
+#### 3. Separation of Concerns
 
----
+**Repository Layer:**
+- Uses RUM tracking only
+- Tracks user-facing errors (network failures, API errors)
+- Includes business context (endpoint, query, category)
+- **Why:** These errors directly impact users and need to be visible in analytics
 
-##### 1.2 Article Favorited
+**ViewModel Layer:**
+- Uses Logs tracking only
+- Tracks debugging information for developers
+- Includes detailed context for troubleshooting
+- **Why:** These are internal errors that need developer attention, not user analytics
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/detail/ArticleDetailViewModel.kt`  
-**Line:** 35
+**UI Layer:**
+- Uses RUM tracking for business events
+- Tracks user interactions with business context
+- Captures navigation and user journey
+- **Why:** These events represent user behavior and business metrics
 
-**Usage:**
-```kotlin
-DatadogTracker.trackArticleFavorited(article.id, article.title)
-```
+### Why Use Manual Instrumentation?
 
-**Implementation:** `DatadogTracker.kt` (Lines 115-123)
+#### Advantages
 
-**Context:** Called when user adds an article to favorites via the FloatingActionButton.
+1. **Business Intelligence**
+   - Track domain-specific events that matter to your business
+   - Understand user behavior in business terms
+   - Measure feature adoption and usage
 
----
+2. **Rich Context**
+   - Add business attributes to events (product ID, category, user segment)
+   - Provide context for errors (what was the user trying to do?)
+   - Enable powerful filtering and analysis in Datadog
 
-##### 1.3 Article Unfavorited
+3. **Handled Error Tracking**
+   - Track errors that are caught and handled gracefully
+   - Add business context to error reports
+   - Understand error patterns in business terms
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/detail/ArticleDetailViewModel.kt`  
-**Line:** 32
+4. **Custom Analytics**
+   - Track A/B test events
+   - Measure feature usage
+   - Understand user journeys and conversion funnels
 
-**Usage:**
-```kotlin
-DatadogTracker.trackArticleUnfavorited(article.id, article.title)
-```
+#### Limitations
 
-**Implementation:** `DatadogTracker.kt` (Lines 125-133)
+1. **Maintenance Overhead**
+   - Requires adding tracking code throughout the application
+   - Must remember to track new features
+   - Risk of missing important events
 
----
+2. **Code Duplication Risk**
+   - Easy to accidentally track the same event multiple times
+   - Can lead to inflated metrics
+   - Requires careful code review
 
-##### 1.4 Article Shared
+3. **Performance Considerations**
+   - Each tracking call has a small overhead
+   - Too many tracking calls can impact performance
+   - Requires careful design and optimization
 
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/detail/ArticleDetailActivity.kt`  
-**Line:** 143
+4. **Inconsistency Risk**
+   - Different developers may track events differently
+   - Event naming can become inconsistent
+   - Requires clear guidelines and code review
 
-**Usage:**
-```kotlin
-DatadogTracker.trackArticleShared(article.id, article.title, "system_share")
-```
+### What Gets Tracked Manually?
 
-**Implementation:** `DatadogTracker.kt` (Lines 135-144)
+#### Business Events
+- Domain-specific actions (article viewed, favorited, shared)
+- Feature usage (search performed, category selected)
+- User journey events (navigation between screens)
+- Conversion events (purchases, sign-ups, etc.)
 
-**Context:** Called when user shares an article via the share menu option.
+#### Custom Screen Tracking
+- Override automatic screen names with business-friendly labels
+- Add contextual attributes to screen views
+- Track screen-specific metrics
 
----
+#### Handled Errors
+- Network errors with business context
+- Validation errors
+- Business logic errors
+- Errors with relevant attributes (what was the user doing?)
 
-##### 1.5 Search Performed
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/search/SearchFragment.kt`  
-**Line:** 90
-
-**Usage:**
-```kotlin
-DatadogTracker.trackSearchPerformed(query)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 146-154)
-```kotlin
-fun trackSearchPerformed(query: String) {
-    trackEvent(
-        "search_performed",
-        mapOf(
-            "search_query" to query,
-            "query_length" to query.length.toString()
-        )
-    )
-}
-```
-
-**Attributes Tracked:**
-- `search_query`: The search query entered by the user
-- `query_length`: Length of the search query
-
----
-
-##### 1.6 Category Selected
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/category/CategoryFragment.kt`  
-**Line:** 55
-
-**Usage:**
-```kotlin
-DatadogTracker.trackCategorySelected(category)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 156-161)
-
-**Context:** Called when user selects a category from the horizontal category RecyclerView.
+#### Debugging Information
+- Detailed error logs for troubleshooting
+- ViewModel state information
+- Business logic flow tracking
+- Performance timing information
 
 ---
 
-##### 1.7 Fragment Selected
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/MainActivity.kt`  
-**Lines:** 45-53
-
-**Usage:**
-```kotlin
-navController.addOnDestinationChangedListener { _, destination, _ ->
-    val fragmentName = when (destination.id) {
-        R.id.homeFragment -> "HomeFragment"
-        R.id.categoryFragment -> "CategoryFragment"
-        R.id.searchFragment -> "SearchFragment"
-        R.id.favoritesFragment -> "FavoritesFragment"
-        else -> destination.label?.toString() ?: "Unknown"
-    }
-    DatadogTracker.trackFragmentSelected(fragmentName, destination.id.toString())
-}
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 163-174)
-
-**Context:** Tracks bottom navigation tab changes automatically via Navigation Component listener.
-
----
-
-##### 1.8 Navigation Events
-
-**Files:**
-- `HomeFragment.kt` (Lines 54-61)
-- `SearchFragment.kt` (Lines 54-61)
-- `CategoryFragment.kt` (Lines 71-78)
-- `FavoritesFragment.kt` (Lines 52-59)
-
-**Usage Example (HomeFragment.kt, Line 54):**
-```kotlin
-DatadogTracker.trackNavigation(
-    "home",
-    "article_detail",
-    mapOf(
-        "article_id" to article.id,
-        "article_title" to article.title
-    )
-)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 176-182)
-
-**Context:** Tracks navigation from list screens to article detail screen.
-
----
-
-##### 1.9 Item Tap Events
-
-**Files:**
-- `HomeFragment.kt` (Lines 46-53)
-- `SearchFragment.kt` (Lines 46-53)
-- `CategoryFragment.kt` (Lines 63-70)
-- `FavoritesFragment.kt` (Lines 44-51)
-
-**Usage Example (HomeFragment.kt, Line 46):**
-```kotlin
-DatadogTracker.trackItemTap(
-    "article_card",
-    mapOf(
-        "article_id" to article.id,
-        "article_title" to article.title,
-        "from_screen" to "home"
-    )
-)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 50-55)
-
-**Context:** Tracks when user taps on an article card in any list view.
-
----
-
-##### 1.10 Button Click Events
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/presentation/detail/ArticleDetailActivity.kt`  
-**Lines:** 97-104, 136-142
-
-**Usage Examples:**
-```kotlin
-// Favorite button (Line 97)
-DatadogTracker.trackButtonClick(
-    "favorite",
-    mapOf(
-        "article_id" to article.id,
-        "article_title" to article.title,
-        "current_favorite_state" to viewModel.isFavorite.value.toString()
-    )
-)
-
-// Share button (Line 136)
-DatadogTracker.trackButtonClick(
-    "share",
-    mapOf(
-        "article_id" to article.id,
-        "article_title" to article.title
-    )
-)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 43-48)
-
----
-
-##### 1.11 Swipe Actions
-
-**Files:**
-- `CategoryFragment.kt` (Lines 105-109)
-- `HomeFragment.kt` (Lines 109-113)
-
-**Usage Example (CategoryFragment.kt, Line 105):**
-```kotlin
-DatadogTracker.trackAction(
-    RumActionType.SWIPE,
-    "pull_to_refresh",
-    mapOf("screen" to "category")
-)
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 32-41)
-
-**Context:** Tracks pull-to-refresh gestures on list screens.
-
----
-
-#### 2. Screen Tracking (Manual Override)
-
-**Why Manual:** Override automatic names with business-friendly labels and add contextual attributes.
-
-**Implementation Locations:**
-
-| File | Line | Screen Key | Screen Name |
-|------|------|------------|-------------|
-| `MainActivity.kt` | 25 | `"main_activity"` | `"Main Activity"` |
-| `ArticleDetailActivity.kt` | 38-46 | `"article_detail"` | `"Article Detail"` |
-| `HomeFragment.kt` | 38 | `"home_fragment"` | `"Home Screen"` |
-| `SearchFragment.kt` | 38 | `"search_fragment"` | `"Search Screen"` |
-| `CategoryFragment.kt` | 44 | `"category_fragment"` | `"Category Screen"` |
-| `FavoritesFragment.kt` | 37 | `"favorites_fragment"` | `"Favorites Screen"` |
-
-**Example with Attributes (ArticleDetailActivity.kt, Lines 38-46):**
-```kotlin
-DatadogTracker.startScreen(
-    "article_detail",
-    "Article Detail",
-    mapOf(
-        "article_id" to article.id,
-        "article_title" to article.title,
-        "article_source" to (article.sourceName ?: "unknown")
-    )
-)
-```
-
-**Stop Screen Calls:**
-- All fragments call `DatadogTracker.stopScreen()` in `onDestroyView()`
-- Activities call `DatadogTracker.stopScreen()` in `onDestroy()`
-
-**Implementation:** `DatadogTracker.kt` (Lines 16-30)
-
----
-
-#### 3. Error Tracking with Context
-
-##### 3.1 Repository Layer - RUM Tracking
-
-**File:** `app/src/main/java/com/shoaib/demodatadog/data/repository/NewsRepositoryImpl.kt`
-
-**Methods with Error Tracking:**
-
-1. **`getTopHeadlines()`** (Lines 26-34)
-```kotlin
-catch (e: Exception) {
-    // RUM tracking only (for user analytics)
-    DatadogTracker.trackNetworkError(
-        message = "Failed to load top headlines",
-        throwable = e,
-        attributes = mapOf(
-            "endpoint" to "top-headlines",
-            "country" to country,
-            "page" to page.toString()
-        )
-    )
-    Result.failure(e)
-}
-```
-
-2. **`getHeadlinesByCategory()`** (Lines 44-52)
-```kotlin
-catch (e: Exception) {
-    DatadogTracker.trackNetworkError(
-        message = "Failed to load headlines by category",
-        throwable = e,
-        attributes = mapOf(
-            "endpoint" to "headlines-by-category",
-            "category" to category,
-            "page" to page.toString()
-        )
-    )
-    Result.failure(e)
-}
-```
-
-3. **`searchNews()`** (Lines 62-70)
-```kotlin
-catch (e: Exception) {
-    DatadogTracker.trackNetworkError(
-        message = "Failed to search news",
-        throwable = e,
-        attributes = mapOf(
-            "endpoint" to "search-news",
-            "query" to query,
-            "page" to page.toString()
-        )
-    )
-    Result.failure(e)
-}
-```
-
-**Implementation:** `DatadogTracker.kt` (Lines 92-98)
-
-**Pattern:** Repository layer uses RUM tracking only (for user-facing errors and analytics).
-
----
-
-##### 3.2 ViewModel Layer - Logs Only
-
-**Files:**
-- `CategoryViewModel.kt` (Lines 44-53, 69-79)
-- `SearchViewModel.kt` (Lines 51-60, 77-86)
-- `HomeViewModel.kt` (Lines 42-50, 71-79)
-
-**Example (CategoryViewModel.kt, Lines 44-53):**
-```kotlin
-onFailure = { error ->
-    // Logging only (for debugging ViewModel issues)
-    DatadogLogger.e(
-        message = "Failed to load category headlines in ViewModel",
-        throwable = error,
-        attributes = mapOf(
-            "screen" to "category",
-            "action" to "load_category",
-            "category" to category,
-            "page" to currentPage.toString()
-        )
-    )
-    _uiState.value = CategoryUiState.Error(error.message ?: "Unknown error")
-}
-```
-
-**Implementation:** `DatadogLogger.kt` (Lines 53-55)
-
-**Initialization:** `NewsApplication.kt` (Lines 78-89)
-
-**Pattern:** ViewModel layer uses Logs only (for debugging and troubleshooting context).
-
----
-
-#### 4. Manual Tracking Architecture
-
-**Core Components:**
-
-1. **`DatadogTracker.kt`** (`app/src/main/java/com/shoaib/demodatadog/util/DatadogTracker.kt`)
-   - Singleton object for RUM event tracking
-   - 183 lines of manual tracking code
-   - Business event methods
-   - Error tracking with context
-   - Screen tracking utilities
-
-2. **`DatadogLogger.kt`** (`app/src/main/java/com/shoaib/demodatadog/util/DatadogLogger.kt`)
-   - Singleton logger for debugging logs
-   - 63 lines of logging utilities
-   - Initialized in `NewsApplication.kt` (Line 86)
-   - Used for ViewModel error debugging
-
----
-
-## Hybrid Approach: Best Practice
+## Hybrid Approach: The Production Standard
 
 ### Why Hybrid is the Best Approach
 
-Our application uses a **hybrid approach** combining automatic and manual instrumentation. This is the **recommended best practice** for production applications according to Datadog documentation.
+The **hybrid approach** combines automatic and manual instrumentation, leveraging the strengths of both while minimizing their weaknesses. This is the **recommended best practice** for production applications.
 
-### Advantages of Hybrid Approach
+### The 70/30 Rule
 
-1. **Comprehensive Coverage:**
-   - Automatic: Standard events (~70% of tracking)
-   - Manual: Business events + context (~30% of tracking)
+In a well-designed hybrid approach:
+- **~70% of events are tracked automatically** (standard events: views, interactions, network, crashes)
+- **~30% of events are tracked manually** (business events, custom context, handled errors)
 
-2. **Reduced Code Maintenance:**
-   - No need to manually track every tap, swipe, or view
-   - Focus manual tracking on business-critical events
+This ratio provides comprehensive coverage while maintaining code maintainability.
 
-3. **Business Intelligence:**
-   - Automatic tracking provides standard technical metrics
-   - Manual tracking provides business-specific insights
+### How Hybrid Works in Practice
 
-4. **Cost Efficiency:**
+#### Automatic for Standard Events
+
+The SDK automatically handles:
+- All screen views and transitions
+- All user interactions (taps, swipes, clicks)
+- All network requests and responses
+- All crashes and unhandled exceptions
+- Performance metrics and timing
+
+**Result:** Zero code needed for standard monitoring.
+
+#### Manual for Business Logic
+
+Developers explicitly track:
+- Business events (purchases, favorites, shares)
+- Custom attributes (product IDs, categories, user segments)
+- Handled errors with business context
+- User journey and navigation flows
+- Feature usage and adoption
+
+**Result:** Rich business intelligence and analytics.
+
+### Benefits of Hybrid Approach
+
+1. **Comprehensive Coverage**
+   - Automatic tracking ensures no gaps in standard events
+   - Manual tracking adds business-specific insights
+   - Best of both worlds
+
+2. **Maintainability**
+   - Minimal manual code required
+   - Focus manual tracking on high-value business events
+   - SDK handles the rest automatically
+
+3. **Business Intelligence**
+   - Standard metrics from automatic tracking
+   - Business insights from manual tracking
+   - Complete picture of application health and user behavior
+
+4. **Cost Efficiency**
    - Automatic tracking is optimized by SDK
    - Manual tracking adds value with minimal overhead
+   - Efficient data collection and transmission
 
-5. **Flexibility:**
+5. **Flexibility**
    - Can override automatic tracking when needed
    - Can add custom context to automatic events
+   - Adaptable to changing requirements
 
-### Our Hybrid Implementation Matrix
+### Hybrid Architecture Pattern
 
-| Layer | Automatic | Manual |
-|-------|-----------|--------|
-| **Views** | ✅ All Activities/Fragments | ✅ Custom names + attributes |
-| **Interactions** | ✅ All taps/swipes/clicks | ✅ Business events (article_viewed, favorited) |
-| **Network** | ✅ All API calls | ✅ Error context (endpoint, query, category) |
-| **Crashes** | ✅ Unhandled exceptions | ❌ Not needed (already automatic) |
-| **Handled Errors** | ❌ Not automatic | ✅ RUM tracking in Repository, Logs in ViewModel |
-| **Session Replay** | ✅ Automatic | ❌ Not needed |
+#### Layer-Based Separation
 
-### Tracking Separation Pattern
+**Repository Layer (Data Layer):**
+- **Automatic:** Network requests tracked via interceptors
+- **Manual:** Network errors tracked with RUM (user-facing)
+- **Why:** Errors here impact users directly
 
-**Repository Layer:**
-- ✅ RUM tracking only (`DatadogTracker.trackNetworkError`)
-- ✅ User-facing errors with business context
-- ❌ No logging (avoids duplication)
+**ViewModel Layer (Business Logic):**
+- **Automatic:** None (business logic layer)
+- **Manual:** Errors tracked with Logs (debugging)
+- **Why:** Internal errors need developer attention
 
-**ViewModel Layer:**
-- ✅ Logging only (`DatadogLogger.e`)
-- ✅ Debugging context for troubleshooting
-- ❌ No RUM tracking (already tracked in Repository)
+**UI Layer (Presentation):**
+- **Automatic:** Screen views, user interactions
+- **Manual:** Business events, custom screen tracking
+- **Why:** User behavior and business metrics
 
-**UI Layer:**
-- ✅ Business events (`DatadogTracker.trackArticleViewed`, etc.)
-- ✅ Custom screen tracking
-- ✅ User interaction events
+### Avoiding Duplication
 
----
+A key principle in hybrid instrumentation is **avoiding duplication**:
 
-## Code Reference Guide
+- **Don't track the same event twice** (e.g., both automatic and manual)
+- **Repository errors:** Track once with RUM (user impact)
+- **ViewModel errors:** Track once with Logs (debugging)
+- **UI events:** Use automatic for standard interactions, manual for business events
 
-### Automatic Instrumentation Files
-
-#### 1. NewsApplication.kt
-**Path:** `app/src/main/java/com/shoaib/demodatadog/NewsApplication.kt`
-
-| Section | Lines | Description |
-|---------|-------|-------------|
-| SDK Configuration | 41-54 | Datadog SDK initialization with first-party hosts |
-| User Info | 60-64 | Global user information setup |
-| Session Replay | 66-69 | Session replay configuration (100% sample rate) |
-| Logs Configuration | 74-89 | Logs enablement and singleton logger initialization |
-| RUM View Tracking | 91-115 | Custom view name strategy with ComponentPredicate |
-| Trace Configuration | 117-120 | Distributed tracing enablement |
-
-#### 2. NetworkModule.kt
-**Path:** `app/src/main/java/com/shoaib/demodatadog/di/NetworkModule.kt`
-
-| Section | Lines | Description |
-|---------|-------|-------------|
-| Traced Hosts | 21-24 | First-party hosts configuration |
-| DatadogInterceptor | 36-38 | RUM network tracking interceptor |
-| TracingInterceptor | 40-42 | APM distributed tracing interceptor |
-
-### Manual Instrumentation Files
-
-#### 1. DatadogTracker.kt
-**Path:** `app/src/main/java/com/shoaib/demodatadog/util/DatadogTracker.kt`  
-**Total Lines:** 183
-
-| Method | Lines | Purpose |
-|--------|-------|---------|
-| `startScreen()` | 16-26 | Start manual screen tracking |
-| `stopScreen()` | 28-30 | Stop manual screen tracking |
-| `trackAction()` | 32-41 | Generic action tracking |
-| `trackButtonClick()` | 43-48 | Button click tracking |
-| `trackItemTap()` | 50-55 | Item tap tracking |
-| `trackEvent()` | 57-70 | Business event tracking |
-| `trackError()` | 72-90 | Generic error tracking |
-| `trackNetworkError()` | 92-98 | Network error tracking |
-| `trackArticleViewed()` | 104-113 | Article view event |
-| `trackArticleFavorited()` | 115-123 | Article favorite event |
-| `trackArticleUnfavorited()` | 125-133 | Article unfavorite event |
-| `trackArticleShared()` | 135-144 | Article share event |
-| `trackSearchPerformed()` | 146-154 | Search event |
-| `trackCategorySelected()` | 156-161 | Category selection event |
-| `trackFragmentSelected()` | 163-174 | Fragment navigation event |
-| `trackNavigation()` | 176-182 | Screen navigation event |
-
-#### 2. DatadogLogger.kt
-**Path:** `app/src/main/java/com/shoaib/demodatadog/util/DatadogLogger.kt`  
-**Total Lines:** 63
-
-| Method | Lines | Purpose |
-|--------|-------|---------|
-| `initialize()` | 20-22 | Initialize singleton logger |
-| `d()` | 32-34 | Debug log |
-| `i()` | 39-41 | Info log |
-| `w()` | 46-48 | Warning log |
-| `e()` | 53-55 | Error log |
-| `wtf()` | 60-62 | Critical error log |
-
-### Usage Locations
-
-| File | Tracking Type | Lines | Description |
-|------|---------------|-------|-------------|
-| `MainActivity.kt` | Screen + Fragment Selection | 25, 45-53, 58 | Main activity tracking |
-| `ArticleDetailActivity.kt` | Screen + Business Events | 38-47, 97-104, 136-143, 153 | Article detail tracking |
-| `ArticleDetailViewModel.kt` | Business Events | 32, 35 | Favorite/unfavorite tracking |
-| `HomeFragment.kt` | Screen + Interactions | 38, 46-61, 93-100, 109-113, 120 | Home screen tracking |
-| `SearchFragment.kt` | Screen + Search | 38, 46-61, 90, 106 | Search screen tracking |
-| `CategoryFragment.kt` | Screen + Category | 44, 55, 63-78, 105-109, 121 | Category screen tracking |
-| `FavoritesFragment.kt` | Screen + Navigation | 37, 44-59, 79 | Favorites screen tracking |
-| `NewsRepositoryImpl.kt` | Network Errors | 26-34, 44-52, 62-70 | Repository error tracking |
-| `CategoryViewModel.kt` | Error Logging | 44-53, 69-79 | ViewModel error logging |
-| `SearchViewModel.kt` | Error Logging | 51-60, 77-86 | ViewModel error logging |
-| `HomeViewModel.kt` | Error Logging | 42-50, 71-79 | ViewModel error logging |
+This ensures accurate metrics and prevents data inflation.
 
 ---
 
-## Decision Matrix
+## Production-Level Best Practices
 
-### Use Automatic Instrumentation For:
+### 1. Sampling and Cost Management
 
-| Event Type | Reason | Example |
-|------------|--------|---------|
-| Standard UI interactions | SDK can detect automatically | Taps, swipes, clicks |
-| Screen views | Automatic lifecycle tracking | Activities, Fragments |
-| Network requests | Interceptor-based tracking | All API calls |
-| Crashes | System-level exception handling | Unhandled exceptions |
-| Performance metrics | Built-in SDK capabilities | Load times, rendering |
-| Session replay | Automatic screen recording | All user sessions |
+#### Session Replay Sampling
+- **Development:** 100% sampling (see everything)
+- **Production:** 10-20% sampling (manage costs)
+- **Why:** Session replay generates large amounts of data
 
-### Use Manual Instrumentation For:
+#### Error Sampling
+- Consider sampling for high-volume, low-severity errors
+- Always track critical errors at 100%
+- Use attributes to filter and prioritize
 
-| Event Type | Reason | Example |
-|------------|--------|---------|
-| Business events | SDK cannot detect domain logic | `article_viewed`, `article_favorited` |
-| Custom screen names | Business-friendly labels | `"Home Screen"` vs `"HomeFragment"` |
-| Handled errors | Try-catch blocks not automatic | Network errors with context |
-| Debugging logs | Detailed troubleshooting info | ViewModel error context |
-| User journey tracking | Business-specific flows | Navigation between screens |
-| A/B test events | Custom experiment tracking | Feature flag usage |
-| Feature usage tracking | Business metrics | Search query analysis |
+#### Network Request Sampling
+- Automatic tracking is already optimized
+- Consider filtering out health check endpoints
+- Focus on first-party hosts for detailed tracking
+
+### 2. Privacy and Security
+
+#### Data Scrubbing
+- Mask sensitive information (passwords, tokens, PII)
+- Configure privacy settings in SDK
+- Review attributes before sending to Datadog
+
+#### User Consent
+- Respect user privacy preferences
+- Implement consent management
+- Allow users to opt-out of tracking
+
+#### Network Logging
+- **Development:** Full request/response logging for debugging
+- **Production:** Disable body logging, log headers only
+- **Why:** Request bodies may contain sensitive data
+
+### 3. Environment-Based Configuration
+
+#### Development vs Production
+- Different sampling rates per environment
+- Different log levels (verbose in dev, errors in prod)
+- Different session replay settings
+
+#### Feature Flags
+- Use feature flags to enable/disable tracking features
+- A/B test tracking implementations
+- Gradual rollout of new tracking
+
+### 4. Error Tracking Strategy
+
+#### User-Facing Errors (RUM)
+- Track in Repository layer
+- Include business context
+- Visible in analytics dashboards
+- Examples: Network failures, API errors
+
+#### Developer Errors (Logs)
+- Track in ViewModel layer
+- Include debugging context
+- Visible in logs for troubleshooting
+- Examples: Business logic errors, state management issues
+
+#### Critical Errors
+- Track in both RUM and Logs
+- Include full context
+- Set up alerts
+- Examples: Payment failures, data corruption
+
+### 5. Performance Optimization
+
+#### Minimize Tracking Overhead
+- Batch tracking calls when possible
+- Use async tracking (non-blocking)
+- Avoid tracking in tight loops
+- Profile tracking impact
+
+#### Efficient Data Collection
+- Only track necessary attributes
+- Avoid large payloads in attributes
+- Use appropriate data types
+- Compress data when possible
+
+### 6. Monitoring and Alerting
+
+#### Key Metrics to Monitor
+- Error rates by type and screen
+- Performance metrics (load times, response times)
+- Business event volumes
+- User journey completion rates
+
+#### Alert Configuration
+- Set up alerts for critical errors
+- Monitor error rate spikes
+- Track performance degradation
+- Business metric thresholds
+
+### 7. Documentation and Guidelines
+
+#### Team Guidelines
+- Document what should be tracked automatically vs manually
+- Establish naming conventions for manual events
+- Create code review checklist for tracking
+- Regular audits of tracking implementation
+
+#### Event Catalog
+- Maintain a catalog of all tracked events
+- Document event attributes and meanings
+- Version control for event schemas
+- Deprecation process for old events
 
 ---
 
-## Production Recommendations
+## Decision Framework
 
-### Current Implementation Status: ✅ Production-Ready
+### When to Use Automatic Instrumentation
 
-**What's Working Well:**
-- ✅ Clear separation: Repository = RUM, ViewModel = Logs
-- ✅ No duplication: Each error tracked once
-- ✅ Comprehensive business event tracking
-- ✅ Automatic tracking for standard events
+Use automatic instrumentation for:
 
-### Recommendations for Production
+**Standard UI Events**
+- All taps, clicks, swipes
+- Screen views and transitions
+- Standard user interactions
 
-1. **Session Replay Sampling**
-   - **Current:** 100% sample rate (Line 67 in `NewsApplication.kt`)
-   - **Recommended:** 10-20% for production
-   - **Code Change:**
-     ```kotlin
-     val sessionReplayConfig = SessionReplayConfiguration.Builder(20f).build()
-     ```
+**Network Monitoring**
+- All API calls and responses
+- Network errors and timeouts
+- Request/response times
 
-2. **Environment-Based Configuration**
-   - Use different configs for dev vs prod
-   - Consider BuildConfig flags for environment-specific settings
+**System Events**
+- Application crashes
+- Unhandled exceptions
+- Performance metrics
 
-3. **User Info Management**
-   - **Current:** Hardcoded user info (Lines 60-64 in `NewsApplication.kt`)
-   - **Recommended:** Update dynamically based on user login
-   - Use `Datadog.setUserInfo()` when user logs in
+**Session Replay**
+- Visual session recordings
+- User interaction replays
 
-4. **Network Logging**
-   - **Current:** `HttpLoggingInterceptor.Level.BODY` (Line 30 in `NetworkModule.kt`)
-   - **Recommended:** Disable body logging in production
-   - **Code Change:**
-     ```kotlin
-     level = if (BuildConfig.DEBUG) 
-         HttpLoggingInterceptor.Level.BODY 
-     else 
-         HttpLoggingInterceptor.Level.NONE
-     ```
+**Reason:** These events are standard across all applications and don't require business context.
 
-5. **Error Sampling**
-   - Consider sampling for high-volume error events
-   - Use attributes to filter important errors
+### When to Use Manual Instrumentation
+
+Use manual instrumentation for:
+
+**Business Events**
+- Domain-specific actions (purchases, favorites, shares)
+- Feature usage tracking
+- Conversion events
+
+**Business Context**
+- Adding product IDs, categories, user segments
+- Custom attributes for analysis
+- Business-specific metadata
+
+**Handled Errors**
+- Errors caught in try-catch blocks
+- Business logic errors
+- Validation errors with context
+
+**User Journey**
+- Navigation flows
+- Feature adoption
+- Conversion funnels
+
+**A/B Testing**
+- Experiment events
+- Variant tracking
+- Feature flag usage
+
+**Reason:** These events require business understanding and context that the SDK cannot automatically detect.
+
+### Decision Tree
+
+```
+Is this a standard application event?
+├─ YES → Use Automatic Instrumentation
+│   └─ Examples: Screen view, button click, network request
+│
+└─ NO → Does it require business context?
+    ├─ YES → Use Manual Instrumentation (RUM)
+    │   └─ Examples: Article favorited, purchase completed
+    │
+    └─ NO → Is it a handled error for debugging?
+        ├─ YES → Use Manual Instrumentation (Logs)
+        │   └─ Examples: ViewModel errors, business logic issues
+        │
+        └─ NO → Re-evaluate: Should this be tracked?
+```
+
+### Common Mistakes to Avoid
+
+**Tracking the Same Event Twice**
+- Don't manually track events that are already automatic
+- Example: Don't manually track button clicks if automatic tracking is enabled
+
+**Missing Business Context**
+- Don't track business events without relevant attributes
+- Example: Track "article_viewed" with article_id, not just the event name
+
+**Inconsistent Naming**
+- Establish and follow naming conventions
+- Example: Use "article_favorited" not "favorite_article" or "articleFavorite"
+
+**Over-Tracking**
+- Don't track every single interaction
+- Focus on business-critical events
+- Example: Track "search_performed" not every keystroke
+
+**Under-Tracking**
+- Don't forget to track important business events
+- Review new features for tracking needs
+- Example: Track "purchase_completed" with order details
 
 ---
 
 ## Conclusion
 
-**Our Approach: Hybrid Instrumentation** ✅
+### Key Takeaways
 
-- **70% Automatic:** Standard events tracked automatically
-- **30% Manual:** Business events and context tracked manually
-- **Best Practice:** Recommended by Datadog for production applications
-- **Maintainable:** Clear separation of concerns
-- **Comprehensive:** Covers both technical and business metrics
+1. **Automatic Instrumentation** provides zero-code tracking for standard events, ensuring comprehensive coverage with minimal maintenance.
 
-**This hybrid approach provides the best of both worlds:**
-- Automatic tracking ensures comprehensive coverage with minimal code
-- Manual tracking adds business intelligence and context
-- No duplication or redundancy
-- Production-ready and scalable
+2. **Manual Instrumentation** adds business intelligence and context, enabling powerful analytics and business insights.
+
+3. **Hybrid Approach** is the production standard, combining the strengths of both approaches while minimizing weaknesses.
+
+4. **Separation of Concerns** is critical: RUM for user-facing events, Logs for debugging, avoid duplication.
+
+5. **Production Best Practices** include sampling, privacy, environment-based config, and performance optimization.
+
+### The Production-Ready Formula
+
+**For Production Applications:**
+- Enable automatic instrumentation for standard events (~70%)
+- Add manual tracking for business events (~30%)
+- Use RUM for user-facing errors and business metrics
+- Use Logs for debugging and troubleshooting
+- Implement sampling and cost management
+- Follow privacy and security best practices
+- Monitor and optimize performance
+- Document and maintain tracking guidelines
+
+This hybrid approach provides comprehensive monitoring, actionable business insights, and maintainable code—the foundation of a production-ready application.
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** Based on current codebase analysis  
-**Repository:** DemoDataDog  
-**Status:** Complete documentation of automatic vs manual instrumentation with accurate code references
+**Document Version:** 2.0  
+**Focus:** Theoretical understanding and production best practices  
+**Target Audience:** Developers, Architects, Product Managers
