@@ -16,6 +16,7 @@ import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.adapter.CategoryAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -42,6 +43,7 @@ class CategoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         DatadogTracker.startScreen("category_fragment", "Category Screen")
+        SegmentTracker.trackScreen("Category Screen")
         setupRecyclerViews()
         observeViewModel()
         setupSwipeRefresh()
@@ -53,6 +55,7 @@ class CategoryFragment : Fragment() {
     private fun setupRecyclerViews() {
         categoryAdapter = CategoryAdapter(categories) { category ->
             DatadogTracker.trackCategorySelected(category)
+            SegmentTracker.trackCategorySelected(category)
             viewModel.loadCategory(category)
         }
         binding.categoriesRecyclerView.layoutManager =
@@ -68,7 +71,23 @@ class CategoryFragment : Fragment() {
                     "from_screen" to "category"
                 )
             )
+            SegmentTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "category"
+                )
+            )
             DatadogTracker.trackNavigation(
+                "category",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
+            SegmentTracker.trackNavigation(
                 "category",
                 "article_detail",
                 mapOf(
@@ -107,6 +126,7 @@ class CategoryFragment : Fragment() {
                 "pull_to_refresh",
                 mapOf("screen" to "category")
             )
+            SegmentTracker.trackEvent("Pull to Refresh", mapOf("screen" to "category"))
             if (categories.isNotEmpty()) {
                 val selectedPos = categoryAdapter.selectedPosition
                 if (selectedPos in categories.indices) {

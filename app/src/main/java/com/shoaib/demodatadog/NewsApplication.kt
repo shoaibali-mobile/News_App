@@ -20,16 +20,38 @@ import com.datadog.android.trace.TraceConfiguration
 import com.datadog.android.sessionreplay.SessionReplay
 import com.datadog.android.sessionreplay.SessionReplayConfiguration
 import com.shoaib.demodatadog.util.DatadogLogger
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.HiltAndroidApp
+import com.segment.analytics.kotlin.android.Analytics
 
 @HiltAndroidApp
 class NewsApplication : Application() {
     
     override fun onCreate() {
         super.onCreate()
+        initializeSegment()
         initializeDatadog()
     }
-    
+
+    private fun initializeSegment() {
+        val analytics = Analytics("f4ys0uuqFQYUMBOqtKrOBDyVuDRrMxRn", applicationContext) {
+            // Automatically track Lifecycle events
+            trackApplicationLifecycleEvents = true
+            flushAt = 3
+            flushInterval = 10
+        }
+        // Initialize the SegmentTracker singleton
+        SegmentTracker.initialize(analytics)
+        SegmentTracker.setUserId("Shoaib349298290292")
+        val testTraits = mapOf(
+            "email" to "shoaib@example.com",
+            "subscription_type" to "premium",
+            "favorite_category" to "tech"
+        )
+
+        SegmentTracker.identify("Shoaib349298290292",testTraits)
+    }
+
     private fun initializeDatadog() {
         val clientToken = BuildConfig.DATADOG_CLIENT_TOKEN
         val applicationId = BuildConfig.DATADOG_APPLICATION_ID

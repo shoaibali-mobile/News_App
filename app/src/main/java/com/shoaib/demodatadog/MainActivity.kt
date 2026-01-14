@@ -10,6 +10,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.shoaib.demodatadog.databinding.ActivityMainBinding
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -23,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         DatadogTracker.startScreen("main_activity", "Main Activity")
+        SegmentTracker.trackScreen("Main Activity")
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -51,6 +53,7 @@ class MainActivity : AppCompatActivity() {
                 else -> destination.label?.toString() ?: "Unknown"
             }
             DatadogTracker.trackFragmentSelected(fragmentName, destination.id.toString())
+            SegmentTracker.trackFragmentSelected(fragmentName, destination.id.toString())
         }
     }
 

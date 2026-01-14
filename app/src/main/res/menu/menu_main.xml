@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_crash_test"
+        android:title="Crash Test"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/action_null_pointer"
+                android:title="NullPointerException" />
+            <item
+                android:id="@+id/action_array_index"
+                android:title="ArrayIndexOutOfBounds" />
+            <item
+                android:id="@+id/action_illegal_state"
+                android:title="IllegalStateException" />
+            <item
+                android:id="@+id/action_runtime_error"
+                android:title="RuntimeException" />
+            <item
+                android:id="@+id/action_arithmetic_error"
+                android:title="ArithmeticException" />
+        </menu>
+    </item>
+</menu>
+
+

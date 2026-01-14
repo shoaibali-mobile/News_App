@@ -14,6 +14,7 @@ import com.shoaib.demodatadog.databinding.FragmentFavoritesBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -35,6 +36,7 @@ class FavoritesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         DatadogTracker.startScreen("favorites_fragment", "Favorites Screen")
+        SegmentTracker.trackScreen("Favorites Screen")
         setupRecyclerView()
         observeViewModel()
     }
@@ -49,7 +51,23 @@ class FavoritesFragment : Fragment() {
                     "from_screen" to "favorites"
                 )
             )
+            SegmentTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "favorites"
+                )
+            )
             DatadogTracker.trackNavigation(
+                "favorites",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
+            SegmentTracker.trackNavigation(
                 "favorites",
                 "article_detail",
                 mapOf(

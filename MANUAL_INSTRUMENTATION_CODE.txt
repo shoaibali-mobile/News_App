@@ -1,0 +1,1192 @@
+================================================================================
+DATADOG MANUAL INSTRUMENTATION - CODE IMPLEMENTATION GUIDE
+================================================================================
+
+This document contains code snippets and implementation examples for manual
+instrumentation in Datadog. All code is from the actual implementation.
+
+================================================================================
+1. INITIALIZATION SETUP
+================================================================================
+
+File: NewsApplication.kt
+
+Initialize Datadog SDK and enable Logs and RUM:
+
+private fun initializeDatadog() {
+    val clientToken = BuildConfig.DATADOG_CLIENT_TOKEN
+    val applicationId = BuildConfig.DATADOG_APPLICATION_ID
+    val env = BuildConfig.DATADOG_ENV
+    
+    // Initialize Datadog SDK
+    val configuration = Configuration.Builder(
+        clientToken = clientToken,
+        env = env,
+        variant = appVariantName
+    )
+        .setFirstPartyHosts(listOf("newsapi.org", "api.newsapi.org"))
+        .useSite(DatadogSite.US1)
+        .build()
+    
+    val trackingConsent = TrackingConsent.GRANTED
+    Datadog.initialize(this, configuration, trackingConsent)
+    
+    // Set user information
+    Datadog.setUserInfo(
+        id = "Gohan349298290292",
+        name = "Gohan",
+        email = "Gohan@gmail.com"
+    )
+    
+    // Initialize Session Replay
+    val sessionReplayConfig = SessionReplayConfiguration.Builder(100f)
+        .build()
+    SessionReplay.enable(sessionReplayConfig)
+    
+    // Configure and enable Logs
+    val logsConfig = LogsConfiguration.Builder().build()
+    Logs.enable(logsConfig)
+    
+    // Create logger instance and initialize singleton
+    val logger = Logger.Builder()
+        .setNetworkInfoEnabled(true)
+        .setLogcatLogsEnabled(true)
+        .setName("AppLogger")
+        .build()
+    
+    // Initialize the singleton logger
+    DatadogLogger.initialize(logger)
+    
+    // Initialize RUM with custom view name provider
+    val activityPredicate = object : ComponentPredicate<Activity> {
+        override fun accept(component: Activity): Boolean = true
+        override fun getViewName(component: Activity): String? {
+            return component.javaClass.simpleName
+        }
+    }
+    
+    val fragmentPredicate = object : ComponentPredicate<Fragment> {
+        override fun accept(component: Fragment): Boolean = true
+        override fun getViewName(component: Fragment): String? {
+            return component.javaClass.simpleName
+        }
+    }
+    
+    val rumConfiguration = RumConfiguration.Builder(applicationId)
+        .useViewTrackingStrategy(
+            MixedViewTrackingStrategy(
+                trackExtras = true,
+                componentPredicate = activityPredicate,
+                supportFragmentComponentPredicate = fragmentPredicate
+            )
+        )
+        .build()
+    Rum.enable(rumConfiguration)
+    
+    // Initialize Trace
+    val traceConfig = TraceConfiguration.Builder()
+        .build()
+    Trace.enable(traceConfig)
+}
+
+================================================================================
+WHAT WE INITIALIZE FOR MANUAL INSTRUMENTATION
+================================================================================
+
+File: NewsApplication.kt
+
+1. Enable Logs for Manual Logging
+
+// Configure and enable Logs
+val logsConfig = LogsConfiguration.Builder().build()
+Logs.enable(logsConfig)
+
+Enables the Datadog Logs feature to send custom log messages manually.
+This provides the capability to send detailed logs with attributes and context.
+
+---
+
+2. Create Logger Instance
+
+// Create logger instance and initialize singleton
+val logger = Logger.Builder()
+    .setNetworkInfoEnabled(true)
+    .setLogcatLogsEnabled(true)
+    .setName("AppLogger")
+    .build()
+
+Creates a Logger instance configured with network info and logcat output.
+This logger is used by DatadogLogger utility class for manual log tracking.
+
+---
+
+3. Initialize DatadogLogger Singleton
+
+// Initialize the singleton logger
+DatadogLogger.initialize(logger)
+
+Initializes the custom DatadogLogger singleton with the logger instance.
+This allows manual logging from anywhere in the app using DatadogLogger methods.
+
+---
+
+4. Enable RUM for Manual Tracking
+
+val rumConfiguration = RumConfiguration.Builder(applicationId)
+    .useViewTrackingStrategy(
+        MixedViewTrackingStrategy(
+            trackExtras = true,
+            componentPredicate = activityPredicate,
+            supportFragmentComponentPredicate = fragmentPredicate
+        )
+    )
+    .build()
+Rum.enable(rumConfiguration)
+
+Enables the Datadog RUM feature with custom view tracking strategy.
+This provides the capability to manually track screen views, events, and errors using DatadogTracker.
+
+================================================================================
+2. UNDERSTANDING THE TWO UTILITY CLASSES
+================================================================================
+
+Before diving into the code, it's important to understand the two main utility
+classes used for manual instrumentation and when to use each one.
+
+--------------------------------------------------------------------------------
+CLASS 1: DatadogTracker (RUM - Real User Monitoring)
+--------------------------------------------------------------------------------
+
+WHAT IS IT?
+-----------
+DatadogTracker is a utility class that tracks user-facing events and business
+metrics. It sends data to Datadog's RUM (Real User Monitoring) system, which is
+designed for analytics and understanding user behavior.
+
+WHAT IS IT USED FOR?
+--------------------
+- Tracking business events (article viewed, favorited, shared, etc.)
+- Tracking user interactions with business context
+- Tracking screen views and navigation
+- Tracking user-facing errors (network failures that users see)
+- Understanding user behavior and business metrics
+
+WHERE IS IT USED?
+-----------------
+1. Repository Layer: Track network errors that impact users
+2. UI Layer (Activities/Fragments): Track business events, screen views, navigation
+3. ViewModel Layer: Track business actions (like favoriting an article)
+
+EXAMPLE 1: Tracking Article Viewed (UI Layer)
+-----------------------------------------------
+Location: ArticleDetailActivity.kt
+
+When a user opens an article detail screen, we track this business event:
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    
+    article = intent.getParcelableExtra<Article>(EXTRA_ARTICLE) ?: return
+    
+    // Track that user viewed this article (business event)
+    DatadogTracker.trackArticleViewed(
+        articleId = article.id,
+        articleTitle = article.title,
+        source = article.sourceName
+    )
+}
+
+Why use DatadogTracker here?
+- This is a business event (article viewed) that matters for analytics
+- Product managers need to know which articles are popular
+- This data appears in Datadog dashboards for business analysis
+
+EXAMPLE 2: Tracking Network Error (Repository Layer)
+------------------------------------------------------
+Location: NewsRepositoryImpl.kt
+
+When a network request fails, we track it so we can see which endpoints are
+failing for users:
+
+override suspend fun getTopHeadlines(country: String, page: Int): Result<List<Article>> {
+    return try {
+        val response = apiService.getTopHeadlines(apiKey, country, page = page)
+        Result.success(response.articles.map { it.toArticle() })
+    } catch (e: Exception) {
+        // Track network error - users will see this failure
+        DatadogTracker.trackNetworkError(
+            message = "Failed to load top headlines",
+            throwable = e,
+            attributes = mapOf(
+                "endpoint" to "top-headlines",
+                "country" to country,
+                "page" to page.toString()
+            )
+        )
+        Result.failure(e)
+    }
+}
+
+Why use DatadogTracker here?
+- Network errors directly impact users (they see error messages)
+- This data needs to be visible in analytics dashboards
+- Product team needs to know which features are failing for users
+
+--------------------------------------------------------------------------------
+CLASS 2: DatadogLogger (Logs - Debugging and Troubleshooting)
+--------------------------------------------------------------------------------
+
+WHAT IS IT?
+-----------
+DatadogLogger is a utility class that logs detailed information for developers.
+It sends data to Datadog's Logs system, which is designed for debugging and
+troubleshooting technical issues.
+
+WHAT IS IT USED FOR?
+--------------------
+- Logging internal errors in ViewModels
+- Logging debugging information for developers
+- Tracking errors that don't directly impact users
+- Troubleshooting business logic issues
+- Detailed error context for developers to fix bugs
+
+WHERE IS IT USED?
+-----------------
+1. ViewModel Layer: Log errors that occur during data processing
+2. Business Logic Layer: Log internal errors that need developer attention
+3. Anywhere you need detailed debugging information
+
+EXAMPLE 1: Logging ViewModel Error
+------------------------------------
+Location: HomeViewModel.kt
+
+When data loading fails in a ViewModel, we log it for developers to debug:
+
+fun loadTopHeadlines() {
+    viewModelScope.launch {
+        repository.getTopHeadlines(page = currentPage).fold(
+            onSuccess = { articles ->
+                _articles.value = articles
+                _uiState.value = HomeUiState.Success
+            },
+            onFailure = { error ->
+                // Log error for developers to debug
+                DatadogLogger.e(
+                    message = "Failed to load top headlines in ViewModel",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "home",
+                        "action" to "load_top_headlines",
+                        "page" to currentPage.toString()
+                    )
+                )
+                _uiState.value = HomeUiState.Error(error.message ?: "Unknown error")
+            }
+        )
+    }
+}
+
+Why use DatadogLogger here?
+- This is an internal error in the ViewModel (not directly seen by users)
+- Developers need detailed logs to debug why data loading failed
+- This appears in Datadog Logs (not RUM dashboards)
+- Includes full stack trace and context for troubleshooting
+
+EXAMPLE 2: Logging Category Load Error
+----------------------------------------
+Location: CategoryViewModel.kt
+
+When loading articles by category fails, we log it with context:
+
+fun loadCategory(category: String) {
+    viewModelScope.launch {
+        repository.getHeadlinesByCategory(category, currentPage).fold(
+            onSuccess = { articles ->
+                _articles.value = _articles.value + articles
+                _uiState.value = CategoryUiState.Success
+            },
+            onFailure = { error ->
+                // Log error with debugging context
+                DatadogLogger.e(
+                    message = "Failed to load category headlines in ViewModel",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "category",
+                        "action" to "load_category",
+                        "category" to category,
+                        "page" to currentPage.toString()
+                    )
+                )
+                _uiState.value = CategoryUiState.Error(error.message ?: "Unknown error")
+            }
+        )
+    }
+}
+
+Why use DatadogLogger here?
+- Internal ViewModel error that needs developer attention
+- Includes context (which category, which page) for debugging
+- Full error stack trace helps identify the root cause
+- Not a user-facing error, so it goes to Logs, not RUM
+
+--------------------------------------------------------------------------------
+KEY DIFFERENCES: When to Use Which?
+--------------------------------------------------------------------------------
+
+USE DatadogTracker (RUM) WHEN:
+- Tracking business events (article viewed, favorited, shared)
+- Tracking user-facing errors (network failures users see)
+- Tracking screen views and navigation
+- Tracking user interactions with business context
+- Data needed for analytics and business dashboards
+
+USE DatadogLogger (Logs) WHEN:
+- Logging internal errors in ViewModels
+- Logging debugging information for developers
+- Tracking errors that don't directly impact users
+- Detailed troubleshooting information
+- Data needed for technical debugging
+
+SIMPLE RULE:
+- User sees it or it's a business event? → Use DatadogTracker (RUM)
+- Developer needs to debug it? → Use DatadogLogger (Logs)
+
+LAYER SEPARATION:
+- Repository Layer: Use DatadogTracker (network errors impact users)
+- ViewModel Layer: Use DatadogLogger (internal errors for debugging)
+- UI Layer: Use DatadogTracker (business events and user behavior)
+
+================================================================================
+3. UTILITY CLASSES - FULL IMPLEMENTATION
+================================================================================
+
+File: util/DatadogTracker.kt
+
+RUM (Real User Monitoring) tracking utility for business events and user-facing errors:
+
+object DatadogTracker {
+    private var userId: String = "Gohan349298290292"
+    
+    fun setUserId(id: String) {
+        userId = id
+    }
+    
+    // Screen tracking
+    fun startScreen(
+        viewKey: String,
+        screenName: String,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        val allAttributes = attributes.toMutableMap().apply {
+            put("user_id", userId)
+            put("screen_type", "manual")
+        }
+        GlobalRumMonitor.get().startView(viewKey, screenName, allAttributes)
+    }
+    
+    fun stopScreen(viewKey: String) {
+        GlobalRumMonitor.get().stopView(viewKey)
+    }
+    
+    // Generic action tracking
+    fun trackAction(
+        type: RumActionType,
+        actionName: String,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        val allAttributes = attributes.toMutableMap().apply {
+            put("user_id", userId)
+        }
+        GlobalRumMonitor.get().addAction(type, actionName, allAttributes)
+    }
+    
+    // Button click tracking
+    fun trackButtonClick(
+        buttonName: String,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        trackAction(RumActionType.CLICK, "button_clicked_$buttonName", attributes)
+    }
+    
+    // Item tap tracking
+    fun trackItemTap(
+        itemName: String,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        trackAction(RumActionType.TAP, "item_tapped_$itemName", attributes)
+    }
+    
+    // Custom event tracking
+    fun trackEvent(
+        eventName: String,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        val allAttributes = attributes.toMutableMap().apply {
+            put("user_id", userId)
+            put("event_type", "business")
+        }
+        GlobalRumMonitor.get().addAction(
+            RumActionType.CUSTOM,
+            eventName,
+            allAttributes
+        )
+    }
+    
+    // Error tracking (RUM)
+    fun trackError(
+        message: String,
+        throwable: Throwable? = null,
+        source: RumErrorSource = RumErrorSource.SOURCE,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        val allAttributes = attributes.toMutableMap().apply {
+            put("user_id", userId)
+            throwable?.let {
+                put("error_type", it.javaClass.simpleName)
+            }
+        }
+        GlobalRumMonitor.get().addError(
+            message = message,
+            source = source,
+            throwable = throwable,
+            attributes = allAttributes
+        )
+    }
+    
+    // Network error tracking
+    fun trackNetworkError(
+        message: String,
+        throwable: Throwable? = null,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        trackError(message, throwable, RumErrorSource.NETWORK, attributes)
+    }
+    
+    // Business-specific event tracking methods
+    fun trackArticleViewed(articleId: String, articleTitle: String, source: String? = null) {
+        trackEvent(
+            "article_viewed",
+            mapOf(
+                "article_id" to articleId,
+                "article_title" to articleTitle,
+                "article_source" to (source ?: "unknown")
+            )
+        )
+    }
+    
+    fun trackArticleFavorited(articleId: String, articleTitle: String) {
+        trackEvent(
+            "article_favorited",
+            mapOf(
+                "article_id" to articleId,
+                "article_title" to articleTitle
+            )
+        )
+    }
+    
+    fun trackArticleUnfavorited(articleId: String, articleTitle: String) {
+        trackEvent(
+            "article_unfavorited",
+            mapOf(
+                "article_id" to articleId,
+                "article_title" to articleTitle
+            )
+        )
+    }
+    
+    fun trackArticleShared(articleId: String, articleTitle: String, shareMethod: String = "unknown") {
+        trackEvent(
+            "article_shared",
+            mapOf(
+                "article_id" to articleId,
+                "article_title" to articleTitle,
+                "share_method" to shareMethod
+            )
+        )
+    }
+    
+    fun trackSearchPerformed(query: String) {
+        trackEvent(
+            "search_performed",
+            mapOf(
+                "search_query" to query,
+                "query_length" to query.length.toString()
+            )
+        )
+    }
+    
+    fun trackCategorySelected(category: String) {
+        trackEvent(
+            "category_selected",
+            mapOf("category" to category)
+        )
+    }
+    
+    fun trackNavigation(fromScreen: String, toScreen: String, attributes: Map<String, String> = emptyMap()) {
+        val allAttributes = attributes.toMutableMap().apply {
+            put("from_screen", fromScreen)
+            put("to_screen", toScreen)
+        }
+        trackAction(RumActionType.CUSTOM, "navigation", allAttributes)
+    }
+}
+
+================================================================================
+
+File: util/DatadogLogger.kt
+
+Logs tracking utility for debugging and troubleshooting:
+
+object DatadogLogger {
+    private var logger: Logger? = null
+    
+    /**
+     * Initialize the logger instance
+     * Call this once in Application.onCreate() after Logs.enable()
+     */
+    fun initialize(loggerInstance: Logger) {
+        logger = loggerInstance
+    }
+    
+    /**
+     * Check if logger is initialized
+     */
+    fun isInitialized(): Boolean = logger != null
+    
+    /**
+     * Log debug messages
+     */
+    fun d(message: String, throwable: Throwable? = null, attributes: Map<String, String> = emptyMap()) {
+        logger?.d(message, throwable, attributes)
+    }
+    
+    /**
+     * Log info messages
+     */
+    fun i(message: String, throwable: Throwable? = null, attributes: Map<String, String> = emptyMap()) {
+        logger?.i(message, throwable, attributes)
+    }
+    
+    /**
+     * Log warning messages
+     */
+    fun w(message: String, throwable: Throwable? = null, attributes: Map<String, String> = emptyMap()) {
+        logger?.w(message, throwable, attributes)
+    }
+    
+    /**
+     * Log error messages
+     */
+    fun e(message: String, throwable: Throwable? = null, attributes: Map<String, String> = emptyMap()) {
+        logger?.e(message, throwable, attributes)
+    }
+    
+    /**
+     * Log critical errors
+     */
+    fun wtf(message: String, throwable: Throwable? = null, attributes: Map<String, String> = emptyMap()) {
+        logger?.wtf(message, throwable, attributes)
+    }
+}
+
+================================================================================
+4. REPOSITORY LAYER IMPLEMENTATION
+================================================================================
+
+File: data/repository/NewsRepositoryImpl.kt
+
+Use RUM tracking for user-facing network errors:
+
+override suspend fun getTopHeadlines(country: String, page: Int): Result<List<Article>> {
+    return try {
+        val response = apiService.getTopHeadlines(apiKey, country, page = page)
+        Result.success(response.articles.map { it.toArticle() })
+    } catch (e: Exception) {
+        // RUM tracking only (for user analytics)
+        DatadogTracker.trackNetworkError(
+            message = "Failed to load top headlines",
+            throwable = e,
+            attributes = mapOf(
+                "endpoint" to "top-headlines",
+                "country" to country,
+                "page" to page.toString()
+            )
+        )
+        Result.failure(e)
+    }
+}
+
+override suspend fun getHeadlinesByCategory(category: String, page: Int): Result<List<Article>> {
+    return try {
+        val response = apiService.getHeadlinesByCategory(apiKey, category, page = page)
+        Result.success(response.articles.map { it.toArticle() })
+    } catch (e: Exception) {
+        DatadogTracker.trackNetworkError(
+            message = "Failed to load headlines by category",
+            throwable = e,
+            attributes = mapOf(
+                "endpoint" to "headlines-by-category",
+                "category" to category,
+                "page" to page.toString()
+            )
+        )
+        Result.failure(e)
+    }
+}
+
+override suspend fun searchNews(query: String, page: Int): Result<List<Article>> {
+    return try {
+        val response = apiService.searchNews(apiKey, query, page = page)
+        Result.success(response.articles.map { it.toArticle() })
+    } catch (e: Exception) {
+        DatadogTracker.trackNetworkError(
+            message = "Failed to search news",
+            throwable = e,
+            attributes = mapOf(
+                "endpoint" to "search-news",
+                "query" to query,
+                "page" to page.toString()
+            )
+        )
+        Result.failure(e)
+    }
+}
+
+================================================================================
+5. VIEWMODEL LAYER IMPLEMENTATION
+================================================================================
+
+File: presentation/home/HomeViewModel.kt
+
+Use Logs tracking for debugging ViewModel errors:
+
+fun loadTopHeadlines() {
+    viewModelScope.launch {
+        _uiState.value = HomeUiState.Loading
+        repository.getTopHeadlines(page = currentPage).fold(
+            onSuccess = { articles ->
+                _articles.value = articles
+                _uiState.value = HomeUiState.Success
+            },
+            onFailure = { error ->
+                // Logging only (for debugging ViewModel issues)
+                DatadogLogger.e(
+                    message = "Failed to load top headlines in ViewModel",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "home",
+                        "action" to "load_top_headlines",
+                        "page" to currentPage.toString()
+                    )
+                )
+                _uiState.value = HomeUiState.Error(error.message ?: "Unknown error")
+            }
+        )
+    }
+}
+
+fun loadMore() {
+    currentPage++
+    viewModelScope.launch {
+        repository.getTopHeadlines(page = currentPage).fold(
+            onSuccess = { newArticles ->
+                _articles.value = _articles.value + newArticles
+            },
+            onFailure = { error ->
+                // Logging only (for debugging)
+                DatadogLogger.e(
+                    message = "Failed to load more top headlines",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "home",
+                        "action" to "load_more",
+                        "page" to currentPage.toString()
+                    )
+                )
+            }
+        )
+    }
+}
+
+================================================================================
+
+File: presentation/category/CategoryViewModel.kt
+
+fun loadCategory(category: String) {
+    viewModelScope.launch {
+        _uiState.value = CategoryUiState.Loading
+        repository.getHeadlinesByCategory(category, currentPage).fold(
+            onSuccess = { articles ->
+                _articles.value = _articles.value + articles
+                _uiState.value = CategoryUiState.Success
+            },
+            onFailure = { error ->
+                // Logging only (for debugging ViewModel issues)
+                DatadogLogger.e(
+                    message = "Failed to load category headlines in ViewModel",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "category",
+                        "action" to "load_category",
+                        "category" to category,
+                        "page" to currentPage.toString()
+                    )
+                )
+                _uiState.value = CategoryUiState.Error(error.message ?: "Unknown error")
+            }
+        )
+    }
+}
+
+================================================================================
+
+File: presentation/search/SearchViewModel.kt
+
+fun search(query: String) {
+    viewModelScope.launch {
+        _uiState.value = SearchUiState.Loading
+        repository.searchNews(query, currentPage).fold(
+            onSuccess = { articles ->
+                _articles.value = _articles.value + articles
+                _uiState.value = if (articles.isEmpty()) SearchUiState.Empty else SearchUiState.Success
+            },
+            onFailure = { error ->
+                // Logging only (for debugging ViewModel issues)
+                DatadogLogger.e(
+                    message = "Failed to search news in ViewModel",
+                    throwable = error,
+                    attributes = mapOf(
+                        "screen" to "search",
+                        "action" to "search",
+                        "query" to query,
+                        "page" to currentPage.toString()
+                    )
+                )
+                _uiState.value = SearchUiState.Error(error.message ?: "Unknown error")
+            }
+        )
+    }
+}
+
+================================================================================
+
+File: presentation/detail/ArticleDetailViewModel.kt
+
+Track business events in ViewModel:
+
+fun toggleFavorite(article: Article) {
+    viewModelScope.launch {
+        if (_isFavorite.value) {
+            DatadogTracker.trackArticleUnfavorited(article.id, article.title)
+            repository.removeFromFavorites(article.id)
+        } else {
+            DatadogTracker.trackArticleFavorited(article.id, article.title)
+            repository.addToFavorites(article)
+        }
+        _isFavorite.value = !_isFavorite.value
+    }
+}
+
+================================================================================
+6. UI LAYER IMPLEMENTATION
+================================================================================
+
+File: presentation/detail/ArticleDetailActivity.kt
+
+Track screen views and business events in Activities:
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    
+    article = intent.getParcelableExtra<Article>(EXTRA_ARTICLE) ?: return
+    
+    // Start manual screen tracking with attributes
+    DatadogTracker.startScreen(
+        "article_detail",
+        "Article Detail",
+        mapOf(
+            "article_id" to article.id,
+            "article_title" to article.title,
+            "article_source" to (article.sourceName ?: "unknown")
+        )
+    )
+    
+    // Track business event
+    DatadogTracker.trackArticleViewed(article.id, article.title, article.sourceName)
+    
+    setupViews()
+    observeViewModel()
+    viewModel.checkFavorite(article.id)
+}
+
+private fun setupViews() {
+    binding.favoriteFab.setOnClickListener {
+        DatadogTracker.trackButtonClick(
+            "favorite",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "current_favorite_state" to viewModel.isFavorite.value.toString()
+            )
+        )
+        viewModel.toggleFavorite(article)
+    }
+}
+
+private fun shareArticle() {
+    DatadogTracker.trackButtonClick(
+        "share",
+        mapOf(
+            "article_id" to article.id,
+            "article_title" to article.title
+        )
+    )
+    DatadogTracker.trackArticleShared(article.id, article.title, "system_share")
+    // ... share implementation
+}
+
+override fun onDestroy() {
+    DatadogTracker.stopScreen("article_detail")
+    super.onDestroy()
+}
+
+================================================================================
+
+File: presentation/home/HomeFragment.kt
+
+Track screen views and user interactions in Fragments:
+
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    
+    // Start manual screen tracking
+    DatadogTracker.startScreen("home_fragment", "Home Screen")
+    
+    setupRecyclerView()
+    observeViewModel()
+    setupSwipeRefresh()
+}
+
+private fun setupRecyclerView() {
+    adapter = ArticleAdapter { article ->
+        // Track item tap with business context
+        DatadogTracker.trackItemTap(
+            "article_card",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "from_screen" to "home"
+            )
+        )
+        
+        // Track navigation
+        DatadogTracker.trackNavigation(
+            "home",
+            "article_detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
+        
+        // Navigate to detail
+        val bundle = Bundle().apply {
+            putParcelable(ArticleDetailActivity.EXTRA_ARTICLE, article)
+        }
+        findNavController().navigate(R.id.articleDetailActivity, bundle)
+    }
+    binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
+    binding.recyclerView.adapter = adapter
+}
+
+private fun observeViewModel() {
+    lifecycleScope.launch {
+        viewModel.uiState.collect { state ->
+            when (state) {
+                is HomeUiState.Error -> {
+                    binding.errorText.text = state.message
+                    // Track UI error state
+                    DatadogTracker.trackError(
+                        "Failed to load articles",
+                        null,
+                        attributes = mapOf(
+                            "screen" to "home",
+                            "error_message" to (state.message ?: "Unknown error")
+                        )
+                    )
+                }
+                // ... other states
+            }
+        }
+    }
+}
+
+private fun setupSwipeRefresh() {
+    binding.swipeRefresh.setOnRefreshListener {
+        DatadogTracker.trackAction(
+            RumActionType.SWIPE,
+            "pull_to_refresh",
+            mapOf("screen" to "home")
+        )
+        viewModel.refresh()
+        binding.swipeRefresh.isRefreshing = false
+    }
+}
+
+override fun onDestroyView() {
+    DatadogTracker.stopScreen("home_fragment")
+    super.onDestroyView()
+    _binding = null
+}
+
+================================================================================
+
+File: presentation/category/CategoryFragment.kt
+
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    DatadogTracker.startScreen("category_fragment", "Category Screen")
+    
+    setupCategoryRecyclerView()
+    setupArticleRecyclerView()
+}
+
+private fun setupCategoryRecyclerView() {
+    categoryAdapter = CategoryAdapter { category ->
+        // Track category selection
+        DatadogTracker.trackCategorySelected(category)
+        viewModel.loadCategory(category)
+    }
+}
+
+private fun setupArticleRecyclerView() {
+    adapter = ArticleAdapter { article ->
+        DatadogTracker.trackItemTap(
+            "article_card",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "from_screen" to "category"
+            )
+        )
+        DatadogTracker.trackNavigation(
+            "category",
+            "article_detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
+        // Navigate to detail
+    }
+}
+
+override fun onDestroyView() {
+    DatadogTracker.stopScreen("category_fragment")
+    super.onDestroyView()
+}
+
+================================================================================
+
+File: presentation/search/SearchFragment.kt
+
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    DatadogTracker.startScreen("search_fragment", "Search Screen")
+    
+    setupSearchView()
+    setupRecyclerView()
+}
+
+private fun setupSearchView() {
+    binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+        override fun onQueryTextSubmit(query: String?): Boolean {
+            query?.let {
+                // Track search performed
+                DatadogTracker.trackSearchPerformed(it)
+                viewModel.search(it)
+            }
+            return true
+        }
+        // ... other methods
+    })
+}
+
+private fun setupRecyclerView() {
+    adapter = ArticleAdapter { article ->
+        DatadogTracker.trackItemTap(
+            "article_card",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "from_screen" to "search"
+            )
+        )
+        DatadogTracker.trackNavigation(
+            "search",
+            "article_detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
+        // Navigate to detail
+    }
+}
+
+override fun onDestroyView() {
+    DatadogTracker.stopScreen("search_fragment")
+    super.onDestroyView()
+}
+
+================================================================================
+
+File: presentation/favorites/FavoritesFragment.kt
+
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    DatadogTracker.startScreen("favorites_fragment", "Favorites Screen")
+    
+    setupRecyclerView()
+    observeViewModel()
+}
+
+private fun setupRecyclerView() {
+    adapter = ArticleAdapter { article ->
+        DatadogTracker.trackItemTap(
+            "article_card",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "from_screen" to "favorites"
+            )
+        )
+        DatadogTracker.trackNavigation(
+            "favorites",
+            "article_detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
+        // Navigate to detail
+    }
+}
+
+override fun onDestroyView() {
+    DatadogTracker.stopScreen("favorites_fragment")
+    super.onDestroyView()
+}
+
+================================================================================
+
+File: MainActivity.kt
+
+Track fragment navigation in MainActivity:
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    DatadogTracker.startScreen("main_activity", "Main Activity")
+    
+    setupBottomNavigation()
+}
+
+private fun setupBottomNavigation() {
+    binding.bottomNavigation.setOnItemSelectedListener { item ->
+        val fragmentName = when (item.itemId) {
+            R.id.nav_home -> "HomeFragment"
+            R.id.nav_category -> "CategoryFragment"
+            R.id.nav_search -> "SearchFragment"
+            R.id.nav_favorites -> "FavoritesFragment"
+            else -> "Unknown"
+        }
+        
+        // Track fragment selection
+        DatadogTracker.trackFragmentSelected(fragmentName, item.itemId.toString())
+        
+        // Navigate to fragment
+        true
+    }
+}
+
+override fun onDestroy() {
+    DatadogTracker.stopScreen("main_activity")
+    super.onDestroy()
+}
+
+================================================================================
+7. KEY IMPLEMENTATION PATTERNS
+================================================================================
+
+PATTERN 1: Repository Layer - Network Error Tracking (RUM)
+----------------------------------------------------------
+- Use DatadogTracker.trackNetworkError() for all network failures
+- Include business context: endpoint, query, category, page
+- These errors impact users directly, so use RUM (not Logs)
+
+PATTERN 2: ViewModel Layer - Internal Error Tracking (Logs)
+------------------------------------------------------------
+- Use DatadogLogger.e() for ViewModel errors
+- Include debugging context: screen, action, state
+- These are internal errors for developers, use Logs (not RUM)
+
+PATTERN 3: UI Layer - Screen Tracking
+-------------------------------------
+- Call DatadogTracker.startScreen() in onCreate/onViewCreated
+- Call DatadogTracker.stopScreen() in onDestroy/onDestroyView
+- Include business attributes in startScreen() when relevant
+
+PATTERN 4: UI Layer - Business Event Tracking
+-----------------------------------------------
+- Use DatadogTracker.trackEvent() or specific helper methods
+- Always include business context (article_id, category, etc.)
+- Track before the action completes (optimistic tracking)
+
+PATTERN 5: UI Layer - Navigation Tracking
+------------------------------------------
+- Track navigation between screens with DatadogTracker.trackNavigation()
+- Include from_screen and to_screen attributes
+- Add relevant business context (article_id, etc.)
+
+================================================================================
+8. SEPARATION OF CONCERNS
+================================================================================
+
+REPOSITORY LAYER:
+- Use: DatadogTracker (RUM) only
+- Track: Network errors with business context
+- Why: Errors here directly impact users
+
+VIEWMODEL LAYER:
+- Use: DatadogLogger (Logs) only
+- Track: Internal errors for debugging
+- Why: These need developer attention, not user analytics
+
+UI LAYER:
+- Use: DatadogTracker (RUM) for business events
+- Track: Screen views, business events, navigation, user interactions
+- Why: These represent user behavior and business metrics
+
+================================================================================
+9. IMPORTANT NOTES
+================================================================================
+
+1. Always initialize DatadogLogger in Application.onCreate() after Logs.enable()
+
+2. Always call startScreen() and stopScreen() in lifecycle methods
+
+3. Include business context in all tracking calls (article_id, category, etc.)
+
+4. Repository errors = RUM (user-facing)
+   ViewModel errors = Logs (debugging)
+
+5. Don't track the same event twice (avoid duplication)
+
+6. Use consistent event naming: snake_case (e.g., "article_viewed")
+
+7. Track business events, not standard UI interactions (those are automatic)
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+

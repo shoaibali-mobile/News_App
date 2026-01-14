@@ -15,6 +15,7 @@ import com.shoaib.demodatadog.databinding.FragmentSearchBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,7 @@ class SearchFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         DatadogTracker.startScreen("search_fragment", "Search Screen")
+        SegmentTracker.trackScreen("Search Screen")
         setupRecyclerView()
         observeViewModel()
         setupSearch()
@@ -51,7 +53,23 @@ class SearchFragment : Fragment() {
                     "from_screen" to "search"
                 )
             )
+            SegmentTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "search"
+                )
+            )
             DatadogTracker.trackNavigation(
+                "search",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
+            SegmentTracker.trackNavigation(
                 "search",
                 "article_detail",
                 mapOf(
@@ -88,6 +106,7 @@ class SearchFragment : Fragment() {
                 val query = binding.searchEditText.text?.toString() ?: ""
                 if (query.isNotEmpty()) {
                     DatadogTracker.trackSearchPerformed(query)
+                    SegmentTracker.trackSearchPerformed(query)
                 }
                 viewModel.search(query)
                 true

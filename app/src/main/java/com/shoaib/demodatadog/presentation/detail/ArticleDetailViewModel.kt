@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.domain.repository.NewsRepository
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,9 +31,11 @@ class ArticleDetailViewModel @Inject constructor(
         viewModelScope.launch {
             if (_isFavorite.value) {
                 DatadogTracker.trackArticleUnfavorited(article.id, article.title)
+                SegmentTracker.trackArticleUnfavorited(article.id, article.title)
                 repository.removeFromFavorites(article.id)
             } else {
                 DatadogTracker.trackArticleFavorited(article.id, article.title)
+                SegmentTracker.trackArticleFavorited(article.id, article.title)
                 repository.addToFavorites(article)
             }
             _isFavorite.value = !_isFavorite.value

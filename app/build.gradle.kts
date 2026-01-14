@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.kapt)
     id("kotlin-parcelize")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
 }
 
 // Read API key from local.properties
@@ -68,6 +69,7 @@ dependencies {
     
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.vision.internal.vkp)
     kapt(libs.hilt.compiler)
     
     // Lifecycle & ViewModel
@@ -111,4 +113,11 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+
+    //Segment
+    implementation("com.segment.analytics.kotlin:android:1.24.0")
+    
+    // Kotlinx Serialization (for Segment Analytics)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }

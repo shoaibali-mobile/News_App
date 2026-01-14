@@ -18,6 +18,7 @@ import com.shoaib.demodatadog.databinding.ActivityArticleDetailBinding
 import com.shoaib.demodatadog.domain.model.Article
 import com.shoaib.demodatadog.util.DateFormatter
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -44,7 +45,16 @@ class ArticleDetailActivity : AppCompatActivity() {
                 "article_source" to (article.sourceName ?: "unknown")
             )
         )
+        SegmentTracker.trackScreen(
+            "Article Detail",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title,
+                "article_source" to (article.sourceName ?: "unknown")
+            )
+        )
         DatadogTracker.trackArticleViewed(article.id, article.title, article.sourceName)
+        SegmentTracker.trackArticleViewed(article.id, article.title, article.sourceName)
 
         setupEdgeToEdge()
         setupToolbar()
@@ -102,6 +112,14 @@ class ArticleDetailActivity : AppCompatActivity() {
                     "current_favorite_state" to viewModel.isFavorite.value.toString()
                 )
             )
+            SegmentTracker.trackButtonClick(
+                "favorite",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "current_favorite_state" to viewModel.isFavorite.value.toString()
+                )
+            )
             viewModel.toggleFavorite(article)
         }
     }
@@ -140,7 +158,15 @@ class ArticleDetailActivity : AppCompatActivity() {
                 "article_title" to article.title
             )
         )
+        SegmentTracker.trackButtonClick(
+            "share",
+            mapOf(
+                "article_id" to article.id,
+                "article_title" to article.title
+            )
+        )
         DatadogTracker.trackArticleShared(article.id, article.title, "system_share")
+        SegmentTracker.trackArticleShared(article.id, article.title, "system_share")
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, article.title)

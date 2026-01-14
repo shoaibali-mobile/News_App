@@ -15,6 +15,7 @@ import com.shoaib.demodatadog.databinding.FragmentHomeBinding
 import com.shoaib.demodatadog.presentation.adapter.ArticleAdapter
 import com.shoaib.demodatadog.presentation.detail.ArticleDetailActivity
 import com.shoaib.demodatadog.util.DatadogTracker
+import com.shoaib.demodatadog.util.segment.SegmentTracker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,7 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         DatadogTracker.startScreen("home_fragment", "Home Screen")
+        SegmentTracker.trackScreen("Home Screen")
         setupRecyclerView()
         observeViewModel()
         setupSwipeRefresh()
@@ -51,7 +53,23 @@ class HomeFragment : Fragment() {
                     "from_screen" to "home"
                 )
             )
+            SegmentTracker.trackItemTap(
+                "article_card",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title,
+                    "from_screen" to "home"
+                )
+            )
             DatadogTracker.trackNavigation(
+                "home",
+                "article_detail",
+                mapOf(
+                    "article_id" to article.id,
+                    "article_title" to article.title
+                )
+            )
+            SegmentTracker.trackNavigation(
                 "home",
                 "article_detail",
                 mapOf(
@@ -111,6 +129,7 @@ class HomeFragment : Fragment() {
                 "pull_to_refresh",
                 mapOf("screen" to "home")
             )
+            SegmentTracker.trackEvent("Pull to Refresh", mapOf("screen" to "home"))
             viewModel.refresh()
             binding.swipeRefresh.isRefreshing = false
         }
